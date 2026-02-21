@@ -30,8 +30,10 @@ const pcUniverse = el("pc-universe");
 const pcLogToggle = el("pc-log");
 const pcBack = el("pc-back");
 
+// Bands UI
 const pcBands = el("pc-bands");
 const pcBandsToggle = el("pc-bands-toggle");
+
 let lastRun = null;
 
 // ----- Load CSV (PriceCheck-only) -----
@@ -72,6 +74,7 @@ if (file) {
       // Reset state + view
       lastRun = null;
       if (pcLogToggle) pcLogToggle.checked = false;
+      collapseBands();          // NEW: keep UI tidy
       showForm();
     } catch (err) {
       alert(err?.message || String(err));
@@ -81,6 +84,10 @@ if (file) {
         pcArtist.innerHTML = `<option value="">Load data first…</option>`;
       }
       if (pcRun) pcRun.disabled = true;
+
+      lastRun = null;
+      collapseBands();          // NEW
+      showForm();
     }
   });
 }
@@ -120,7 +127,7 @@ pcRun?.addEventListener("click", () => {
       workbench: wbLite,
       artistId,
       price,
-      windowMonths: null, // full history for now
+      windowMonths: null,
       myMonthYYYYMM: myMonth,
       yScale,
       elKpis: pcKpis,
@@ -129,6 +136,9 @@ pcRun?.addEventListener("click", () => {
     });
 
     lastRun = { artistId, price, myMonthYYYYMM: myMonth };
+
+    // Default the bands panel to collapsed on each run
+    collapseBands();            // NEW
 
     // Results screen
     pcResults?.classList.remove("hidden");
@@ -142,15 +152,24 @@ pcRun?.addEventListener("click", () => {
   }
 });
 
-// ----- Toggle y-scale after chart exists -----
+// ----- Toggle y-scale AFTER chart exists -----
 pcLogToggle?.addEventListener("change", () => {
   if (!lastRun) return;
   const scale = pcLogToggle.checked ? "log" : "linear";
   setPriceCheckScale(pcUniverse, scale);
 });
 
+// ----- Bands toggle -----
+pcBandsToggle?.addEventListener("click", () => {
+  const open = pcBandsToggle.getAttribute("aria-expanded") === "true";
+  pcBandsToggle.setAttribute("aria-expanded", String(!open));
+  pcBands?.classList.toggle("hidden", open);
+});
+
 // ----- Back button -----
 pcBack?.addEventListener("click", () => {
+  lastRun = null;
+  collapseBands();              // NEW
   showForm();
 });
 
@@ -160,8 +179,8 @@ function showForm() {
   pcResults?.classList.add("hidden");
   setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
 }
-pcBandsToggle?.addEventListener("click", () => {
-  const open = pcBandsToggle.getAttribute("aria-expanded") === "true";
-  pcBandsToggle.setAttribute("aria-expanded", String(!open));
-  pcBands?.classList.toggle("hidden", open);
-});
+
+function collapseBands(){
+  if (pcBandsToggle) pcBandsToggle.setAttribute("aria-expanded", "false");
+  pcBands?.classList.add("hidden");
+}
