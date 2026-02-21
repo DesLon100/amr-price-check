@@ -167,37 +167,68 @@ export const workbench = (() => {
     };
   }
 
-  /* ============================
-     Parse lot-level CSV (your format)
-  ============================ */
-  function parseLotCSV(text){
-    const lines = text.replace(/\r/g,'').split("\n").filter(l => l.trim().length);
-    if(lines.length < 2) return [];
+ /* ============================
+   Parse lot-level CSV (your format)
+   REQUIRED: ArtistID, ArtistName, MonthYYY, ValueGBP
+   OPTIONAL: LocationID, LocationCode, AuctionID, LotNo, SaleURL
+============================ */
+function parseLotCSV(text){
+  const lines = text.replace(/\r/g,'').split("\n").filter(l => l.trim().length);
+  if(lines.length < 2) return [];
 
-    const headers = splitCSVLine(lines[0]).map(h => h.trim());
-    const idx = (name) => headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
+  const headers = splitCSVLine(lines[0]).map(h => h.trim());
+  const idx = (name) => headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
 
-    const iID = idx("ArtistID");
-    const iName = idx("ArtistName");
-    const iMonth = idx("MonthYYY");
-    const iVal = idx("ValueGBP");
+  // required
+  const iID    = idx("ArtistID");
+  const iName  = idx("ArtistName");
+  const iMonth = idx("MonthYYY");
+  const iVal   = idx("ValueGBP");
 
-    if(iID < 0 || iName < 0 || iMonth < 0 || iVal < 0){
-      throw new Error("CSV must include headers: ArtistID, ArtistName, MonthYYY, ValueGBP");
-    }
-
-    const rows = [];
-    for(let i=1;i<lines.length;i++){
-      const cells = splitCSVLine(lines[i]);
-      const id = (cells[iID] ?? "").trim();
-      const name = (cells[iName] ?? "").trim();
-      const dt = ymToDate(cells[iMonth]);
-      const price = parseNumberLoose(cells[iVal]);
-      if(!id || !name || !dt || !Number.isFinite(price) || price <= 0) continue;
-      rows.push({id, name, date: dt, price});
-    }
-    return rows;
+  if(iID < 0 || iName < 0 || iMonth < 0 || iVal < 0){
+    throw new Error("CSV must include headers: ArtistID, ArtistName, MonthYYY, ValueGBP");
   }
+
+  // optional (for click-through + hover context)
+  const iLocId = idx("LocationID");
+  const iLocCd = idx("LocationCode");
+  const iAuc   = idx("AuctionID");
+  const iLot   = idx("LotNo");
+  const iUrl   = idx("SaleURL");
+
+  const rows = [];
+  for(let i=1;i<lines.length;i++){
+    const cells = splitCSVLine(lines[i]);
+
+    const id = (cells[iID] ?? "").trim();
+    const name = (cells[iName] ?? "").trim();
+    const dt = ymToDate(cells[iMonth]);
+    const price = parseNumberLoose(cells[iVal]);
+
+    if(!id || !name || !dt || !Number.isFinite(price) || price <= 0) continue;
+
+    const locationId   = (iLocId >= 0) ? (cells[iLocId] ?? "").trim() : "";
+    const locationCode = (iLocCd >= 0) ? (cells[iLocCd] ?? "").trim() : "";
+    const auctionId    = (iAuc   >= 0) ? (cells[iAuc]   ?? "").trim() : "";
+    const lotNo        = (iLot   >= 0) ? (cells[iLot]   ?? "").trim() : "";
+    const saleUrl      = (iUrl   >= 0) ? (cells[iUrl]   ?? "").trim() : "";
+
+    rows.push({
+      id,
+      name,
+      date: dt,
+      price,
+      // new optional fields
+      locationId,
+      locationCode,
+      auctionId,
+      lotNo,
+      saleUrl
+    });
+  }
+
+  return rows;
+}
 
   /* ============================
      Aggregate: Monthly mean/median/lots/prices + Annual lists
