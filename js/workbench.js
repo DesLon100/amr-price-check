@@ -804,115 +804,86 @@ Included in rankings if Lots (last 24M) ≥ ${Number(els.minLots24.value)}.`;
   /* ============================
      Public API
   ============================ */
-  function loadFromCSVText(text){
-    if(!els) bindDOM();
-    lotRows = parseLotCSV(text);
-    if(!lotRows.length) throw new Error("No valid lot rows found. Check headers + ValueGBP numeric + MonthYYY YYYYMM.");
+ function loadFromCSVText(text){
 
-    buildAggregates();
+  if(!els) bindDOM();
 
-  // If workbench UI exists (dashboard page), wire it.
-// If not (pricecheck page), skip safely.
-if (els && els.artistSelect) {
-
-  els.artistSelect.innerHTML =
-    `<option value="">Select artist…</option>` +
-    artists.map(a =>
-      `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`
-    ).join("");
-
-  els.artistSelect.disabled = false;
-  if (els.btnRecalc) els.btnRecalc.disabled = false;
-  if (els.btnTop) els.btnTop.disabled = false;
-
-  currentArtistId = artists[0]?.id || null;
-  if (currentArtistId) els.artistSelect.value = currentArtistId;
-
-  els.artistSelect.onchange = () => {
-    const id = els.artistSelect.value;
-    if (!id) return;
-    currentArtistId = id;
-    renderArtist(id);
-  };
-
-  if (els.btnRecalc) {
-    els.btnRecalc.onclick = () => { if (artists.length) recalcAll(); };
+  lotRows = parseLotCSV(text);
+  if(!lotRows.length){
+    throw new Error("No valid lot rows found. Check headers + ValueGBP numeric + MonthYYYY YYYYMM.");
   }
 
-  if (els.btnTop) {
-    els.btnTop.onclick = () => {
-      const t = document.getElementById("rankTable");
-      if (t) t.scrollIntoView({behavior:"smooth", block:"start"});
-    };
-  }
+  buildAggregates();
 
-  if (els.tab2) {
-    els.tab2.forEach(t=>{
-      t.onclick = () => {
-        els.tab2.forEach(x=>x.classList.remove("active"));
-        t.classList.add("active");
-        renderRankings(t.getAttribute("data-tab"));
-      };
-    });
-  }
+  // ==========================================================
+  // IMPORTANT:
+  // Only wire dashboard UI if those elements actually exist.
+  // (PriceCheck page does NOT have them.)
+  // ==========================================================
+  if (els && els.artistSelect) {
 
-  recalcAll();
-  if (currentArtistId) renderArtist(currentArtistId);
-}
+    // Populate dashboard artist dropdown
+    els.artistSelect.innerHTML =
+      `<option value="">Select artist…</option>` +
+      artists.map(a =>
+        `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`
+      ).join("");
 
-    // Wire workbench events once
+    els.artistSelect.disabled = false;
+
+    if (els.btnRecalc) els.btnRecalc.disabled = false;
+    if (els.btnTop) els.btnTop.disabled = false;
+
+    currentArtistId = artists[0]?.id || null;
+
+    if (currentArtistId) {
+      els.artistSelect.value = currentArtistId;
+    }
+
+    // Artist change
     els.artistSelect.onchange = () => {
       const id = els.artistSelect.value;
-      if(!id) return;
+      if (!id) return;
       currentArtistId = id;
       renderArtist(id);
     };
-    els.btnRecalc.onclick = () => { if(artists.length) recalcAll(); };
-    els.btnTop.onclick = () => { document.getElementById("rankTable").scrollIntoView({behavior:"smooth", block:"start"}); };
 
-    els.tab2.forEach(t=>{
-      t.onclick = () => {
-        els.tab2.forEach(x=>x.classList.remove("active"));
-        t.classList.add("active");
-        renderRankings(t.getAttribute("data-tab"));
+    // Recalc button
+    if (els.btnRecalc) {
+      els.btnRecalc.onclick = () => {
+        if (artists.length) recalcAll();
       };
-    });
+    }
 
-    // Initial compute + render
+    // Scroll to rankings
+    if (els.btnTop) {
+      els.btnTop.onclick = () => {
+        const table = document.getElementById("rankTable");
+        if (table) {
+          table.scrollIntoView({behavior:"smooth", block:"start"});
+        }
+      };
+    }
+
+    // Tab switching
+    if (els.tab2 && els.tab2.length) {
+      els.tab2.forEach(t => {
+        t.onclick = () => {
+          els.tab2.forEach(x => x.classList.remove("active"));
+          t.classList.add("active");
+          renderRankings(t.getAttribute("data-tab"));
+        };
+      });
+    }
+
+    // Initial compute + render (dashboard only)
     recalcAll();
-    if(currentArtistId) renderArtist(currentArtistId);
-
-    return {
-      rowCount: lotRows.length,
-      artistCount: artists.length
-    };
+    if (currentArtistId) renderArtist(currentArtistId);
   }
 
-  function getArtists(){ return artists.slice(); } // [{id,name}]
-  function getArtistName(id){ return nameById.get(id) || id; }
-  function getMetrics(id){ return metricsByArtist.get(id) || null; }
-  function getLotRows(){ return lotRows.slice(); }
-
-  function getArtistLotPrices(id, windowMonths = null){
-    const rows = lotRows.filter(r => r.id === id).sort((a,b)=>a.date - b.date);
-    if(!windowMonths) return rows.map(r=>r.price);
-
-    const last = rows[rows.length-1]?.date;
-    if(!last) return [];
-    const cutoff = new Date(Date.UTC(last.getUTCFullYear(), last.getUTCMonth()-(windowMonths-1), 1));
-    return rows.filter(r=>r.date >= cutoff).map(r=>r.price);
-  }
-
+  // Always return data summary (used by PriceCheck)
   return {
-    loadFromCSVText,
-    getArtists,
-    getArtistName,
-    getMetrics,
-    getLotRows,
-    getArtistLotPrices,
-    // expose these so app.js can sync:
-    recalcAll,
-    renderArtist,
-    renderRankings,
+    rowCount: lotRows.length,
+    artistCount: artists.length
   };
-})();
+}
