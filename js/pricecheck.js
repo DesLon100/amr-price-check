@@ -83,80 +83,96 @@ function clearingSentence(price, p30, p50, p70, pct){
   return `${P} is above the top-third clearing threshold (p70). Historically, only the stronger outcomes tend to clear above this level.`;
 }
 
-function renderBands(el, price, p30, p50, p70){
+function renderBands(el, opts){
   if(!el) return;
-  if(![price,p30,p50,p70].every(Number.isFinite)){
+
+  const {
+    p30, p50, p70,
+    priceNow,          // user-entered price (today input)
+    equivNow,          // transported "same percentile today"
+    captionText = ""
+  } = opts;
+
+  if(![p30,p50,p70,priceNow,equivNow].every(Number.isFinite)){
     el.innerHTML = "";
     return;
   }
 
-  const lo = Math.min(p30, p50, p70, price);
-  const hi = Math.max(p30, p50, p70, price);
-  const span = Math.max(1, hi - lo);
-  const pad = span * 0.12; // key: keeps ticks/labels inside bounds
+  // axis padding so labels stay inside bounds
+  const xmin = Math.min(p30, p50, p70, priceNow, equivNow);
+  const xmax = Math.max(p30, p50, p70, priceNow, equivNow);
+  const pad = (xmax - xmin) * 0.08 || 1;
+  const range = [Math.max(0, xmin - pad), xmax + pad];
 
-  Plotly.newPlot(
-    el,
-    [
-      // faint band p30->p70
-      {
-        x: [p30, p70],
-        y: [0, 0],
-        mode: "lines",
-        line: { width: 10, color: "rgba(0,0,0,0.10)" },
-        hoverinfo: "skip",
-        showlegend: false
-      },
-      // median tick
-      {
-        x: [p50, p50],
-        y: [-0.16, 0.16],
-        mode: "lines",
-        line: { width: 2, color: "rgba(0,0,0,0.35)" },
-        hoverinfo: "skip",
-        showlegend: false
-      },
-      // your price marker
-      {
-        x: [price],
-        y: [0],
-        mode: "markers",
-        marker: { size: 12, color: "#2f3b63", line: { width: 3, color: "#2f3b63" } },
-        text: [`Your price: ${fmtGBP(price)}`],
-        hoverinfo: "text",
-        showlegend: false
-      }
-    ],
+  Plotly.newPlot(el, [
+    // p30 -> p70 band
     {
-      margin: { l: 64, r: 22, t: 8, b: 34 },
-      xaxis: {
-        range: [lo - pad, hi + pad],
-        showgrid: false,
-        zeroline: false,
-        showline: false,
-        ticks: "outside",
-        ticklen: 4,
-        tickcolor: "rgba(0,0,0,0.18)",
-        tickfont: { size: 12 },
-        tickprefix: "£",
-        separatethousands: true,
-        automargin: true
-      },
-      yaxis: { visible: false },
-
-      // spaced labels (avoid bunching)
-      annotations: [
-        { x:p30, y:0.34, xref:"x", yref:"y", text:`p30 ${fmtGBP(p30)}`, showarrow:false,
-          xanchor:"center", xshift:-18, font:{size:11, color:"rgba(0,0,0,0.55)"} },
-        { x:p50, y:0.34, xref:"x", yref:"y", text:`median ${fmtGBP(p50)}`, showarrow:false,
-          xanchor:"center", xshift:0, font:{size:11, color:"rgba(0,0,0,0.55)"} },
-        { x:p70, y:0.34, xref:"x", yref:"y", text:`p70 ${fmtGBP(p70)}`, showarrow:false,
-          xanchor:"center", xshift:18, font:{size:11, color:"rgba(0,0,0,0.55)"} }
-      ],
-
-      paper_bgcolor: "rgba(0,0,0,0)",
-      plot_bgcolor: "rgba(0,0,0,0)"
+      x: [p30, p70],
+      y: [0, 0],
+      mode: "lines",
+      line: { width: 12, color: "rgba(44,58,92,0.10)" },
+      hoverinfo: "skip",
+      showlegend: false
     },
+    // median tick
+    {
+      x: [p50, p50],
+      y: [-0.18, 0.18],
+      mode: "lines",
+      line: { width: 2, color: "rgba(0,0,0,0.25)" },
+      hoverinfo: "skip",
+      showlegend: false
+    },
+    // your price marker (hollow)
+    {
+      x: [priceNow],
+      y: [0],
+      mode: "markers",
+      marker: {
+        size: 12,
+        color: "#fee7b1",
+        line: { width: 3, color: "#2c3a5c" }
+      },
+      text: [`Your price: ${fmtGBP(priceNow)}`],
+      hoverinfo: "text",
+      showlegend: false
+    },
+    // equivalent level today marker (solid)
+    {
+      x: [equivNow],
+      y: [0],
+      mode: "markers",
+      marker: { size: 11, color: "#2c3a5c" },
+      text: [`Equivalent level today: ${fmtGBP(equivNow)}`],
+      hoverinfo: "text",
+      showlegend: false
+    }
+  ], {
+    margin: { l: 16, r: 16, t: 10, b: 34 },
+    xaxis: {
+      range,
+      showgrid: false,
+      zeroline: false,
+      showline: false,
+      ticks: "outside",
+      ticklen: 4,
+      tickcolor: "rgba(0,0,0,0.18)",
+      tickfont: { size: 12 },
+      separatethousands: true
+    },
+    yaxis: { visible: false, range: [-0.6, 0.6] },
+    annotations: [
+      { x:p30, y:0.42, xref:"x", yref:"y", text:`p30 ${fmtGBP(p30)}`, showarrow:false, xanchor:"left",  font:{size:11, color:"rgba(0,0,0,0.55)"} },
+      { x:p50, y:0.42, xref:"x", yref:"y", text:`median ${fmtGBP(p50)}`, showarrow:false, xanchor:"center", font:{size:11, color:"rgba(0,0,0,0.55)"} },
+      { x:p70, y:0.42, xref:"x", yref:"y", text:`p70 ${fmtGBP(p70)}`, showarrow:false, xanchor:"right", font:{size:11, color:"rgba(0,0,0,0.55)"} }
+    ],
+    paper_bgcolor:"rgba(0,0,0,0)",
+    plot_bgcolor:"rgba(0,0,0,0)"
+  }, { displayModeBar:false, responsive:true });
+
+  const capEl = document.getElementById("pc-bands-caption");
+  if(capEl) capEl.textContent = captionText;
+},
     { displayModeBar:false, responsive:true }
   );
 }
