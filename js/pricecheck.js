@@ -136,7 +136,12 @@ export function runPriceCheck({
   elKpis,
   elStory,
   elChart
-}){
+})
+const elContext = document.getElementById("pc-context-text");
+if(elContext){
+  elContext.textContent = clearingSentence(price, p30, p50, p70, pct);
+}
+{
   const all = workbench.getLotRows()
     .filter(r => r.id === artistId && Number.isFinite(r.price) && r.price > 0 && r.date)
     .sort((a,b)=>a.date - b.date);
