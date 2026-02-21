@@ -1,5 +1,4 @@
 // js/pricecheck.js
-// Scatter universe + "my artwork" point + p30/p50/p70 bands + context note + mini clearing band chart
 
 function fmtGBP(x){
   if(!Number.isFinite(x)) return "—";
@@ -42,21 +41,6 @@ function cutoffDateFromLast(rows, windowMonths){
   return new Date(Date.UTC(last.getUTCFullYear(), last.getUTCMonth()-(windowMonths-1), 1));
 }
 
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, m => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-  }[m]));
-}
-
-function kpi(label, value){
-  return `
-    <div class="kpi">
-      <div class="lab">${escapeHtml(label)}</div>
-      <div class="val">${escapeHtml(value)}</div>
-    </div>
-  `;
-}
-
 function hLine(y){
   return {
     type: "line",
@@ -83,12 +67,6 @@ function labelLine(y, text){
   };
 }
 
-// Workbench parked: keep minimal
-function marketStory(m){
-  if(!m) return "";
-  return "";
-}
-
 function clearingSentence(price, p30, p50, p70, pct){
   const P = fmtGBP(price);
   if(![p30,p50,p70,pct].every(Number.isFinite)) return "";
@@ -105,86 +83,103 @@ function clearingSentence(price, p30, p50, p70, pct){
   return `${P} is above the top-third clearing threshold (p70). Historically, only the stronger outcomes tend to clear above this level.`;
 }
 
-// Mini band chart (p30–p70 band + median tick + your price marker)
 function renderBands(el, price, p30, p50, p70){
   if(!el) return;
-
   if(![price,p30,p50,p70].every(Number.isFinite)){
     el.innerHTML = "";
     return;
   }
 
-  Plotly.newPlot(el, [
-    // band line (p30->p70)
-    {
-      x: [p30, p70],
-      y: [0, 0],
-      mode: "lines",
-      line: { width: 10, color: "rgba(0,0,0,0.10)" },
-      hoverinfo: "skip",
-      showlegend: false
-    },
-    // median tick
-    {
-      x: [p50, p50],
-      y: [-0.14, 0.14],
-      mode: "lines",
-      line: { width: 2, color: "rgba(0,0,0,0.35)" },
-      hoverinfo: "skip",
-      showlegend: false
-    },
-    // your price marker
-    {
-      x: [price],
-      y: [0],
-      mode: "markers",
-      marker: { size: 12, color: "#2f3b63", line: { width: 3, color: "#2f3b63" } },
-      text: [`Your price: ${fmtGBP(price)}`],
-      hoverinfo: "text",
-      showlegend: false
-    }
-  ], {
-    margin: { l: 56, r: 18, t: 6, b: 26 },
-    xaxis: {
-      type: "linear",
-      showgrid: false,
-      zeroline: false,
-      showline: false,
-      ticks: "outside",
-      ticklen: 4,
-      tickcolor: "rgba(0,0,0,0.18)",
-      tickfont: { size: 12 },
-      tickprefix: "£",
-      separatethousands: true
-    },
-    yaxis: { visible: false },
-    annotations: [
-      { x:p30, y:0.28, xref:"x", yref:"y", text:`p30 ${fmtGBP(p30)}`, showarrow:false, font:{size:11, color:"rgba(0,0,0,0.55)"} },
-      { x:p50, y:0.28, xref:"x", yref:"y", text:`median ${fmtGBP(p50)}`, showarrow:false, font:{size:11, color:"rgba(0,0,0,0.55)"} },
-      { x:p70, y:0.28, xref:"x", yref:"y", text:`p70 ${fmtGBP(p70)}`, showarrow:false, font:{size:11, color:"rgba(0,0,0,0.55)"} }
+  const lo = Math.min(p30, p50, p70, price);
+  const hi = Math.max(p30, p50, p70, price);
+  const span = Math.max(1, hi - lo);
+  const pad = span * 0.12; // key: keeps ticks/labels inside bounds
+
+  Plotly.newPlot(
+    el,
+    [
+      // faint band p30->p70
+      {
+        x: [p30, p70],
+        y: [0, 0],
+        mode: "lines",
+        line: { width: 10, color: "rgba(0,0,0,0.10)" },
+        hoverinfo: "skip",
+        showlegend: false
+      },
+      // median tick
+      {
+        x: [p50, p50],
+        y: [-0.16, 0.16],
+        mode: "lines",
+        line: { width: 2, color: "rgba(0,0,0,0.35)" },
+        hoverinfo: "skip",
+        showlegend: false
+      },
+      // your price marker
+      {
+        x: [price],
+        y: [0],
+        mode: "markers",
+        marker: { size: 12, color: "#2f3b63", line: { width: 3, color: "#2f3b63" } },
+        text: [`Your price: ${fmtGBP(price)}`],
+        hoverinfo: "text",
+        showlegend: false
+      }
     ],
-    paper_bgcolor:"rgba(0,0,0,0)",
-    plot_bgcolor:"rgba(0,0,0,0)"
-  }, { displayModeBar:false, responsive:true });
+    {
+      margin: { l: 64, r: 22, t: 8, b: 34 },
+      xaxis: {
+        range: [lo - pad, hi + pad],
+        showgrid: false,
+        zeroline: false,
+        showline: false,
+        ticks: "outside",
+        ticklen: 4,
+        tickcolor: "rgba(0,0,0,0.18)",
+        tickfont: { size: 12 },
+        tickprefix: "£",
+        separatethousands: true,
+        automargin: true
+      },
+      yaxis: { visible: false },
+
+      // spaced labels (avoid bunching)
+      annotations: [
+        { x:p30, y:0.34, xref:"x", yref:"y", text:`p30 ${fmtGBP(p30)}`, showarrow:false,
+          xanchor:"center", xshift:-18, font:{size:11, color:"rgba(0,0,0,0.55)"} },
+        { x:p50, y:0.34, xref:"x", yref:"y", text:`median ${fmtGBP(p50)}`, showarrow:false,
+          xanchor:"center", xshift:0, font:{size:11, color:"rgba(0,0,0,0.55)"} },
+        { x:p70, y:0.34, xref:"x", yref:"y", text:`p70 ${fmtGBP(p70)}`, showarrow:false,
+          xanchor:"center", xshift:18, font:{size:11, color:"rgba(0,0,0,0.55)"} }
+      ],
+
+      paper_bgcolor: "rgba(0,0,0,0)",
+      plot_bgcolor: "rgba(0,0,0,0)"
+    },
+    { displayModeBar:false, responsive:true }
+  );
 }
 
-// Exposed so the toggle can update without rerunning
 export function setPriceCheckScale(elChart, scale){
   if(!elChart) return;
-  const t = (scale === "log") ? "log" : "linear";
-  Plotly.relayout(elChart, { "yaxis.type": t, "yaxis.autorange": true });
+  Plotly.relayout(elChart, {
+    "yaxis.type": (scale === "log") ? "log" : "linear",
+    "yaxis.autorange": true
+  });
 }
 
 const HOUSE_MAP = { SOTH:"Sotheby’s", CHRI:"Christie’s", BONH:"Bonhams", PHIL:"Phillips" };
 const CITY_MAP  = { LOND:"London", NEWY:"New York", HONG:"Hong Kong", PARI:"Paris", GENE:"Geneva", ZURI:"Zurich", ONLI:"Online" };
 
 function formatLocationCode(code){
-  const raw = String(code || "").trim().toUpperCase();
-  if(!raw || raw === "NULL" || raw === "N/A") return "Location —";
-  if(String(code).includes("—")) return String(code); // already human-readable
-  if(raw.length < 5) return String(code || "Location —");
-  const suffix = raw.slice(-4);
-  const prefix = raw.slice(0, -4);
+  const raw = String(code || "").trim();
+  if(!raw || raw.toUpperCase() === "NULL" || raw.toUpperCase() === "N/A") return "Location —";
+  if(raw.includes("—")) return raw; // already human-readable
+  const u = raw.toUpperCase();
+  if(u.length < 5) return raw;
+  const suffix = u.slice(-4);
+  const prefix = u.slice(0, -4);
   const house = HOUSE_MAP[prefix] || prefix;
   const city  = CITY_MAP[suffix]  || suffix;
   return `${house} — ${city}`;
@@ -197,69 +192,44 @@ export function runPriceCheck({
   windowMonths,
   myMonthYYYYMM,
   yScale,
-  elKpis,
-  elStory,
+  elKpis,   // ignored now (safe)
+  elStory,  // safe
   elChart
 }){
   const all = workbench.getLotRows()
     .filter(r => r.id === artistId && Number.isFinite(r.price) && r.price > 0 && r.date)
     .sort((a,b)=>a.date - b.date);
 
-  if(all.length < 30){
-    throw new Error(`Not enough auction lots for this artist (${all.length}).`);
-  }
+  if(all.length < 30) throw new Error(`Not enough auction lots for this artist (${all.length}).`);
 
   const cutoff = cutoffDateFromLast(all, windowMonths);
   const rows = cutoff ? all.filter(r => r.date >= cutoff) : all;
 
-  if(rows.length < 30){
-    throw new Error(`Not enough lots in this window (${rows.length}). Try a wider window.`);
-  }
+  if(rows.length < 30) throw new Error(`Not enough lots in this window (${rows.length}). Try a wider window.`);
 
-  // Distribution stats
   const prices = rows.map(r=>r.price).sort((a,b)=>a-b);
   const p30 = quantile(prices, 0.30);
   const p50 = quantile(prices, 0.50);
   const p70 = quantile(prices, 0.70);
   const pct = percentileRank(prices, price);
 
-  // KPI strip
-  if(elKpis){
-    elKpis.innerHTML = [
-      kpi("Percentile", `${Math.round(pct)}th`),
-      kpi("30th", fmtGBP(p30)),
-      kpi("Median", fmtGBP(p50)),
-      kpi("70th", fmtGBP(p70))
-    ].join("");
-  }
-
-  // Context sentence under scatter (if element exists)
+  // Investor-safe sentence
   const elContext = document.getElementById("pc-context-text");
-  if(elContext){
-    elContext.textContent = clearingSentence(price, p30, p50, p70, pct);
-  }
+  if(elContext) elContext.textContent = clearingSentence(price, p30, p50, p70, pct);
 
-  // Mini band chart (if element exists)
+  // Mini bands chart
   renderBands(document.getElementById("pc-bands-chart"), price, p30, p50, p70);
 
-  // Workbench story parked
-  const m = workbench.getMetrics(artistId);
-  if(elStory){
-    elStory.textContent = marketStory(m);
-  }
-
-  // Scatter data
+  // Scatter
   const x = rows.map(r=>r.date);
   const y = rows.map(r=>r.price);
 
-  // My artwork x-position
   const lastDate = rows[rows.length - 1].date;
   const userDate = parseYYYYMM(myMonthYYYYMM) || lastDate;
 
   const artistName = workbench.getArtistName(artistId) || "Selected artist";
   const scale = (yScale === "log") ? "log" : "linear";
 
-  // Hover/click metadata
   const custom = rows.map(r => ([
     r.lotNo || "",
     r.auctionId || "",
@@ -297,7 +267,7 @@ export function runPriceCheck({
         name: "My artwork",
         text: [`My artwork<br>Price: ${fmtGBP(price)}`],
         hoverinfo: "text",
-        marker: { size: 14, opacity: 1, color: "#ff7327", line: { width: 3, color: "#2f3b63" } }
+        marker: { size: 14, opacity: 1, color: "#fee7b1", line: { width: 3, color: "#2f3b63" } }
       }
     ],
     {
@@ -345,19 +315,17 @@ export function runPriceCheck({
       paper_bgcolor: "rgba(0,0,0,0)",
       plot_bgcolor: "rgba(0,0,0,0)"
     },
-    { displayModeBar: false, responsive: true }
+    { displayModeBar:false, responsive:true }
   );
 
-  // Prevent stacking handlers
   if(elChart && elChart.removeAllListeners) elChart.removeAllListeners("plotly_click");
 
   if(elChart){
     elChart.on("plotly_click", (ev) => {
       const p = ev?.points?.[0];
       if(!p) return;
-      if(p.curveNumber !== 0) return; // auction lots only
-      const cd = p.customdata || [];
-      const url = cd[3];
+      if(p.curveNumber !== 0) return;
+      const url = (p.customdata || [])[3];
       if(url) window.open(url, "_blank", "noopener,noreferrer");
     });
   }
