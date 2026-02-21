@@ -1,5 +1,5 @@
 // js/pricecheck.js
-// Scatter universe + "my artwork" point + p30/p50/p70 bands + plain-English readout
+// Scatter universe + "my artwork" point + p30/p50/p70 bands + context note + mini clearing band chart
 
 function fmtGBP(x){
   if(!Number.isFinite(x)) return "—";
@@ -83,11 +83,12 @@ function labelLine(y, text){
   };
 }
 
+// Workbench parked: keep minimal
 function marketStory(m){
-  // Workbench parked: keep this minimal / non-confusing
   if(!m) return "";
   return "";
 }
+
 function clearingSentence(price, p30, p50, p70, pct){
   const P = fmtGBP(price);
   if(![p30,p50,p70,pct].every(Number.isFinite)) return "";
@@ -103,108 +104,15 @@ function clearingSentence(price, p30, p50, p70, pct){
   }
   return `${P} is above the top-third clearing threshold (p70). Historically, only the stronger outcomes tend to clear above this level.`;
 }
-// Exposed so the toggle can update without rerunning
-export function setPriceCheckScale(elChart, scale){
-  if(!elChart) return;
-  const t = (scale === "log") ? "log" : "linear";
-  Plotly.relayout(elChart, { "yaxis.type": t, "yaxis.autorange": true });
-}
 
-const HOUSE_MAP = { SOTH:"Sotheby’s", CHRI:"Christie’s", BONH:"Bonhams", PHIL:"Phillips" };
-const CITY_MAP  = { LOND:"London", NEWY:"New York", HONG:"Hong Kong", PARI:"Paris", GENE:"Geneva", ZURI:"Zurich", ONLI:"Online" };
-
-function formatLocationCode(code){
-  const raw = String(code || "").trim().toUpperCase();
-  if(!raw || raw === "NULL" || raw === "N/A") return "Location —";
-  // If already human-readable (e.g. "Sotheby's — London"), keep it
-  if(raw.includes("—")) return String(code);
-  if(raw.length < 5) return String(code || "Location —");
-  const suffix = raw.slice(-4);
-  const prefix = raw.slice(0, -4);
-  const house = HOUSE_MAP[prefix] || prefix;
-  const city  = CITY_MAP[suffix]  || suffix;
-  return `${house} — ${city}`;
-}
-
-export function runPriceCheck({
-  workbench,
-  artistId,
-  price,
-  windowMonths,
-  myMonthYYYYMM,
-  yScale,
-  elKpis,
-  elStory,
-  elChart
-})
-const elContext = document.getElementById("pc-context-text");
-if(elContext){
-  elContext.textContent = clearingSentence(price, p30, p50, p70, pct);
-}
-{
-  const all = workbench.getLotRows()
-    .filter(r => r.id === artistId && Number.isFinite(r.price) && r.price > 0 && r.date)
-    .sort((a,b)=>a.date - b.date);
-
-  if(all.length < 30){
-    throw new Error(`Not enough auction lots for this artist (${all.length}).`);
-  }
-
-  const cutoff = cutoffDateFromLast(all, windowMonths);
-  const rows = cutoff ? all.filter(r => r.date >= cutoff) : all;
-
-  if(rows.length < 30){
-    throw new Error(`Not enough lots in this window (${rows.length}). Try a wider window.`);
-  }
-
-  const prices = rows.map(r=>r.price).sort((a,b)=>a-b);
-  const p30 = quantile(prices, 0.30);
-  const p50 = quantile(prices, 0.50);
-  const p70 = quantile(prices, 0.70);
-  const pct = percentileRank(prices, price);
-
-  if(elKpis){
-    elKpis.innerHTML = [
-      kpi("Percentile", `${Math.round(pct)}th`),
-      kpi("30th", fmtGBP(p30)),
-      kpi("Median", fmtGBP(p50)),
-      kpi("70th", fmtGBP(p70))
-    ].join("");
-  }
-
-  const m = workbench.getMetrics(artistId);
-  if(elStory){
-    elStory.textContent = marketStory(m);
-  }
-
-  const x = rows.map(r=>r.date);
-  const y = rows.map(r=>r.price);
-
-  const lastDate = rows[rows.length - 1].date;
-  const userDate = parseYYYYMM(myMonthYYYYMM) || lastDate;
-
-  const artistName = workbench.getArtistName(artistId) || "Selected artist";
-  const scale = (yScale === "log") ? "log" : "linear";
-
-  const custom = rows.map(r => ([
-    r.lotNo || "",
-    r.auctionId || "",
-    r.locationCode || "",
-    r.saleUrl || ""
-  ]));
-
-  const hoverText = rows.map(r => {
-    const loc = formatLocationCode(r.locationCode);
-    const when = r.date
-      ? r.date.toLocaleString("en-GB", { month:"short", year:"numeric", timeZone:"UTC" })
-      : "";
-    const lot = (r.lotNo && String(r.lotNo).toUpperCase() !== "NULL") ? `Lot ${r.lotNo}` : "Lot —";
-    return `${loc}<br>${when}<br>${lot}<br><span style="opacity:.75">Click to open sale</span>`;
-  });
-  function renderBands(el, price, p30, p50, p70){
+// Mini band chart (p30–p70 band + median tick + your price marker)
+function renderBands(el, price, p30, p50, p70){
   if(!el) return;
-  const xs = [p30, p50, p70, price].filter(Number.isFinite);
-  if(xs.length < 4) { el.innerHTML = ""; return; }
+
+  if(![price,p30,p50,p70].every(Number.isFinite)){
+    el.innerHTML = "";
+    return;
+  }
 
   Plotly.newPlot(el, [
     // band line (p30->p70)
@@ -219,7 +127,7 @@ if(elContext){
     // median tick
     {
       x: [p50, p50],
-      y: [-0.12, 0.12],
+      y: [-0.14, 0.14],
       mode: "lines",
       line: { width: 2, color: "rgba(0,0,0,0.35)" },
       hoverinfo: "skip",
@@ -230,13 +138,13 @@ if(elContext){
       x: [price],
       y: [0],
       mode: "markers",
-      marker: { size: 12, color: "rgba(0,0,0,0.75)" },
+      marker: { size: 12, color: "#2f3b63", line: { width: 3, color: "#2f3b63" } },
       text: [`Your price: ${fmtGBP(price)}`],
       hoverinfo: "text",
       showlegend: false
     }
   ], {
-    margin: { l: 56, r: 18, t: 6, b: 28 },
+    margin: { l: 56, r: 18, t: 6, b: 26 },
     xaxis: {
       type: "linear",
       showgrid: false,
@@ -259,6 +167,115 @@ if(elContext){
     plot_bgcolor:"rgba(0,0,0,0)"
   }, { displayModeBar:false, responsive:true });
 }
+
+// Exposed so the toggle can update without rerunning
+export function setPriceCheckScale(elChart, scale){
+  if(!elChart) return;
+  const t = (scale === "log") ? "log" : "linear";
+  Plotly.relayout(elChart, { "yaxis.type": t, "yaxis.autorange": true });
+}
+
+const HOUSE_MAP = { SOTH:"Sotheby’s", CHRI:"Christie’s", BONH:"Bonhams", PHIL:"Phillips" };
+const CITY_MAP  = { LOND:"London", NEWY:"New York", HONG:"Hong Kong", PARI:"Paris", GENE:"Geneva", ZURI:"Zurich", ONLI:"Online" };
+
+function formatLocationCode(code){
+  const raw = String(code || "").trim().toUpperCase();
+  if(!raw || raw === "NULL" || raw === "N/A") return "Location —";
+  if(String(code).includes("—")) return String(code); // already human-readable
+  if(raw.length < 5) return String(code || "Location —");
+  const suffix = raw.slice(-4);
+  const prefix = raw.slice(0, -4);
+  const house = HOUSE_MAP[prefix] || prefix;
+  const city  = CITY_MAP[suffix]  || suffix;
+  return `${house} — ${city}`;
+}
+
+export function runPriceCheck({
+  workbench,
+  artistId,
+  price,
+  windowMonths,
+  myMonthYYYYMM,
+  yScale,
+  elKpis,
+  elStory,
+  elChart
+}){
+  const all = workbench.getLotRows()
+    .filter(r => r.id === artistId && Number.isFinite(r.price) && r.price > 0 && r.date)
+    .sort((a,b)=>a.date - b.date);
+
+  if(all.length < 30){
+    throw new Error(`Not enough auction lots for this artist (${all.length}).`);
+  }
+
+  const cutoff = cutoffDateFromLast(all, windowMonths);
+  const rows = cutoff ? all.filter(r => r.date >= cutoff) : all;
+
+  if(rows.length < 30){
+    throw new Error(`Not enough lots in this window (${rows.length}). Try a wider window.`);
+  }
+
+  // Distribution stats
+  const prices = rows.map(r=>r.price).sort((a,b)=>a-b);
+  const p30 = quantile(prices, 0.30);
+  const p50 = quantile(prices, 0.50);
+  const p70 = quantile(prices, 0.70);
+  const pct = percentileRank(prices, price);
+
+  // KPI strip
+  if(elKpis){
+    elKpis.innerHTML = [
+      kpi("Percentile", `${Math.round(pct)}th`),
+      kpi("30th", fmtGBP(p30)),
+      kpi("Median", fmtGBP(p50)),
+      kpi("70th", fmtGBP(p70))
+    ].join("");
+  }
+
+  // Context sentence under scatter (if element exists)
+  const elContext = document.getElementById("pc-context-text");
+  if(elContext){
+    elContext.textContent = clearingSentence(price, p30, p50, p70, pct);
+  }
+
+  // Mini band chart (if element exists)
+  renderBands(document.getElementById("pc-bands-chart"), price, p30, p50, p70);
+
+  // Workbench story parked
+  const m = workbench.getMetrics(artistId);
+  if(elStory){
+    elStory.textContent = marketStory(m);
+  }
+
+  // Scatter data
+  const x = rows.map(r=>r.date);
+  const y = rows.map(r=>r.price);
+
+  // My artwork x-position
+  const lastDate = rows[rows.length - 1].date;
+  const userDate = parseYYYYMM(myMonthYYYYMM) || lastDate;
+
+  const artistName = workbench.getArtistName(artistId) || "Selected artist";
+  const scale = (yScale === "log") ? "log" : "linear";
+
+  // Hover/click metadata
+  const custom = rows.map(r => ([
+    r.lotNo || "",
+    r.auctionId || "",
+    r.locationCode || "",
+    r.saleUrl || ""
+  ]));
+
+  const hoverText = rows.map(r => {
+    const loc = formatLocationCode(r.locationCode);
+    const when = r.date
+      ? r.date.toLocaleString("en-GB", { month:"short", year:"numeric", timeZone:"UTC" })
+      : "";
+    const lot = (r.lotNo && String(r.lotNo).toUpperCase() !== "NULL") ? `Lot ${r.lotNo}` : "Lot —";
+    return `${loc}<br>${when}<br>${lot}<br><span style="opacity:.75">Click to open sale</span>`;
+  });
+
   Plotly.newPlot(
     elChart,
     [
@@ -270,12 +287,7 @@ if(elContext){
         customdata: custom,
         text: hoverText,
         hoverinfo: "text",
-        marker: {
-  size: 6,
-  opacity: 1,
-  color: "#2f3b63",   // ← use your button colour here
-  line: { width: 0 }
-}
+        marker: { size: 6, opacity: 1, color: "#2f3b63", line: { width: 0 } }
       },
       {
         x: [userDate],
@@ -285,13 +297,7 @@ if(elContext){
         name: "My artwork",
         text: [`My artwork<br>Price: ${fmtGBP(price)}`],
         hoverinfo: "text",
-        marker: {
-  size: 14,
-  opacity: 1,
-  color: "
-#fee7b1",
-  line: { width: 3, color: "#2f3b63" }  // same primary colour
-}
+        marker: { size: 14, opacity: 1, color: "#fee7b1", line: { width: 3, color: "#2f3b63" } }
       }
     ],
     {
@@ -342,6 +348,7 @@ if(elContext){
     { displayModeBar: false, responsive: true }
   );
 
+  // Prevent stacking handlers
   if(elChart && elChart.removeAllListeners) elChart.removeAllListeners("plotly_click");
 
   if(elChart){
