@@ -23,7 +23,6 @@ const pcFormCard = el("pc-form-card");
 const pcArtist = el("pc-artist");
 const pcPrice = el("pc-price");
 const pcMonth = el("pc-month");
-const pcWindow = el("pc-window");
 const pcRun = el("pc-run");
 const pcBack = el("pc-back");
 
