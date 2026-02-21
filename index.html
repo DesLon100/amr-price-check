@@ -61,7 +61,21 @@
 
         <div class="pc-chart-wrap" style="margin-top:14px;">
           <div id="pc-universe" class="pc-chart"></div>
+<div class="pc-context">
+  <div id="pc-context-text" class="pc-context-text"></div>
 
+  <button id="pc-bands-toggle" class="pc-bands-toggle" type="button" aria-expanded="false">
+    <span>Show clearing bands</span>
+    <span class="chev">▾</span>
+  </button>
+</div>
+
+<div id="pc-bands" class="pc-bands hidden">
+  <div id="pc-bands-chart" class="pc-bands-chart"></div>
+  <div id="pc-conc-note" class="pc-conc-note muted">
+    Concentration insight (IQR share) coming soon.
+  </div>
+</div>
           <div class="pc-toggle-row">
             <span class="muted">Linear</span>
 
