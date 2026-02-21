@@ -297,7 +297,7 @@ export function runPriceCheck({
         name: "My artwork",
         text: [`My artwork<br>Price: ${fmtGBP(price)}`],
         hoverinfo: "text",
-        marker: { size: 14, opacity: 1, color: "#fee7b1", line: { width: 3, color: "#2f3b63" } }
+        marker: { size: 14, opacity: 1, color: "#ff7327", line: { width: 3, color: "#2f3b63" } }
       }
     ],
     {
