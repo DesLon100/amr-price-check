@@ -277,3 +277,35 @@ body{
 .pc-section-title{
   color:#1f2a44;   /* your primary */
 }
+.pc-bands-legend{
+  margin-top:8px;
+  font-size:12px;
+  color:var(--muted);
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.dot{
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  display:inline-block;
+}
+
+.dot-your{
+  background:#fee7b1;
+  border:2px solid #2c3a5c;
+}
+
+.dot-equiv{
+  background:#2c3a5c;
+}
+
+.pc-bands-caption{
+  margin-top:6px;
+  font-size:12px;
+  color:var(--muted);
+  line-height:1.3;
+}
