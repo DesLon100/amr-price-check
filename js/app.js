@@ -1,6 +1,6 @@
 // js/app.js
-import { workbench } from "./workbench.js";
 import { runPriceCheck, setPriceCheckScale } from "./pricecheck.js";
+import { loadPriceCheckCSV } from "./data.js";
 
 const el = (id)=>document.getElementById(id);
 const escapeHtml = (s)=>String(s).replace(/[&<>"']/g, m => ({
