@@ -123,7 +123,6 @@ pcRun.addEventListener("click", ()=>{
 // Toggle log/linear AFTER render (no rerun)
 if(pcLogToggle){
   pcLogToggle.addEventListener("change", ()=>{
-    if(!lastRun) return;
     const scale = pcLogToggle.checked ? "log" : "linear";
     setPriceCheckScale(pcUniverse, scale);
   });
