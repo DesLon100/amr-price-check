@@ -75,13 +75,20 @@
         <div class="kpis" id="pc-kpis"></div>
 
        <div class="rowhead" style="margin-top:14px;">
-  <h3 style="margin:0;">Auction universe</h3>
-  <div class="toggle">
-    <span class="muted" style="font-size:12px;">Log</span>
+ <h3 style="margin-top:14px;">Auction universe</h3>
+
+<div class="pc-chart-wrap">
+  <div id="pc-universe" class="pc-chart"></div>
+
+  <div class="pc-toggle-row">
+    <span class="muted">Linear</span>
+
     <label class="switch">
       <input id="pc-log" type="checkbox" />
       <span class="slider"></span>
     </label>
+
+    <span class="muted">Log</span>
   </div>
 </div>
 <div id="pc-universe" style="height:360px;"></div>
