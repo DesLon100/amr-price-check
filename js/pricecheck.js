@@ -195,8 +195,12 @@ export function runPriceCheck({
       kpi("Trend strength (R²)", Number.isFinite(m.r2) ? m.r2.toFixed(2) : "—"),
     ].join("");
   } else {
-    elStructure.innerHTML = `<div class="muted">Workbench metrics not available for this artist yet.</div>`;
-  }
+    const m = workbench.getMetrics(artistId);
+elStructure.innerHTML = ""; // if you no longer show KPI boxes
+const storyEl = document.getElementById("pc-story");
+if(storyEl){
+  storyEl.textContent = marketStory(m);
+}
 
   // Scatter data
   const x = rows.map(r=>r.date);
