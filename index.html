@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AMR — Price Check + Growth Workbench</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div>
+        <div class="brand">AMR</div>
+        <div class="sub">Price Check (your point in universe) + Growth Workbench (shared engine)</div>
+      </div>
+
+      <div class="top-actions">
+        <label class="btn ghost" style="margin:0;">
+          Load AMR data
+          <input id="file" type="file" accept=".csv,text/csv" hidden />
+        </label>
+        <div id="status" class="status">No dataset loaded.</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-view="pricecheck">Price Check</button>
+      <button class="tab" data-view="workbench">Workbench</button>
+      <button class="tab" data-view="scatter">Scatter</button>
+    </div>
+
+    <!-- PRICE CHECK VIEW -->
+    <section id="view-pricecheck" class="view">
+      <div class="card">
+        <h2 style="margin:0 0 6px;">Price Check</h2>
+        <p class="muted" style="margin:0;">
+          Enter an artist + client price point. We’ll place it in the artist’s auction universe (percentile + p30/p50/p70),
+          then summarise market structure using Workbench signals.
+        </p>
+
+        <div class="grid2" style="margin-top:12px;">
+          <div>
+            <label>Artist</label>
+            <select id="pc-artist" disabled>
+              <option value="">Load data first…</option>
+            </select>
+          </div>
+          <div>
+            <label>Price (£)</label>
+            <input id="pc-price" type="number" placeholder="e.g. 25000" />
+          </div>
+          <div>
+            <label>Purchase month (optional)</label>
+            <input id="pc-month" placeholder="YYYYMM (e.g. 202411)" />
+            <div class="muted" style="margin-top:6px;">Optional: used later for time-relative context.</div>
+          </div>
+          <div>
+            <label>Universe window</label>
+            <select id="pc-window">
+              <option value="all">All available years</option>
+              <option value="24">Last 24 months</option>
+              <option value="60">Last 60 months</option>
+              <option value="120">Last 120 months</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="pc-run" class="btn primary" disabled>Run Price Check</button>
+        </div>
+      </div>
+
+      <div id="pc-results" class="card hidden" style="margin-top:12px;">
+        <div class="kpis" id="pc-kpis"></div>
+
+        <h3 style="margin-top:14px;">Auction universe (distribution)</h3>
+        <div id="pc-universe" style="height:320px;"></div>
+
+        <h3 style="margin-top:14px;">Market structure readout (Workbench)</h3>
+        <div class="kpis2" id="pc-structure"></div>
+
+        <div class="muted" style="margin-top:10px;">
+          Note: Workbench metrics use your current rolling/smoothing/trend window settings in the Workbench tab.
+        </div>
+      </div>
+    </section>
+
+    <!-- WORKBENCH VIEW -->
+    <section id="view-workbench" class="view hidden">
+      <div class="panel">
+        <div class="controls">
+          <select id="artistSelect" disabled>
+            <option value="">Load data first…</option>
+          </select>
+
+          <label class="pill">Min lots / 24M</label>
+          <input id="minLots24" type="number" value="50" min="0" step="1" />
+
+          <label class="pill">Rolling (months)</label>
+          <input id="rollM" type="number" value="12" min="1" step="1" />
+
+          <label class="pill">Extra smooth (months)</label>
+          <input id="smoothM" type="number" value="5" min="1" step="1" />
+
+          <label class="pill">Trend window (months)</label>
+          <input id="trendM" type="number" value="60" min="12" step="1" />
+
+          <label class="pill">Clearing bands (months)</label>
+          <input id="clearM" type="number" value="48" min="12" step="1" />
+
+          <button id="btnRecalc" class="btn" disabled>Recalculate</button>
+          <button id="btnTop" class="btn" disabled>Show Top Artists</button>
+        </div>
+
+        <div class="gridWB">
+          <div class="card">
+            <h3>Mean & Median Price (Rolling + Smoothed) with Log-Linear Trends</h3>
+            <div id="chartPrice" style="height:420px;"></div>
+
+            <div style="height:10px;"></div>
+
+            <h3>Clearing Bands (Rolling Percentiles)</h3>
+            <div id="chartClearing" style="height:300px;"></div>
+          </div>
+
+          <div class="card">
+            <h3>KPIs (Selected Artist)</h3>
+            <div class="kpis2" id="kpis"></div>
+
+            <div style="height:10px;"></div>
+
+            <h3>Market-cap Proxy (Price × Lots)</h3>
+            <div id="chartMcap" style="height:220px;"></div>
+
+            <div style="height:10px;"></div>
+
+            <h3>Concentration (Top Decile Value Share)</h3>
+            <div id="chartConc" style="height:220px;"></div>
+
+            <div style="height:10px;"></div>
+
+            <h3>Monthly Auction Lots</h3>
+            <div id="chartLots" style="height:220px;"></div>
+          </div>
+        </div>
+
+        <div class="tabs smalltabs">
+          <button class="tab2 active" data-tab="cagr">Top by Mean CAGR</button>
+          <button class="tab2" data-tab="abs">Top by Abs Δ Mean Price</button>
+          <button class="tab2" data-tab="mcap">Top by Abs Δ Mcap</button>
+          <button class="tab2" data-tab="r2">Top by Trend Strength (R²)</button>
+          <button class="tab2" data-tab="conc">Top by Concentration Increase</button>
+        </div>
+
+        <div class="card" style="margin-top:10px;">
+          <h3>Rankings</h3>
+          <div class="tableWrap">
+            <table id="rankTable">
+              <thead><tr>
+                <th>Rank</th><th>Artist</th><th>Mean CAGR</th><th>Median CAGR</th><th>Mean–Median CAGR Δ</th>
+                <th>Mean/Median Ratio Shift</th><th>Abs Δ Mean Price</th><th>Abs Δ Mcap</th>
+                <th>Top-Decile Share (Latest Yr)</th><th>Δ Top-Decile Share (Window)</th><th>R² (Mean)</th>
+                <th>Lots (last 24M)</th><th>Lots (last 12M)</th>
+              </tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="muted" style="margin-top:8px;">
+            Eligibility: at least <span id="minLotsEcho">50</span> lots in the last 24 months.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCATTER VIEW (placeholder; we can wire later) -->
+    <section id="view-scatter" class="view hidden">
+      <div class="card">
+        <h2 style="margin:0 0 6px;">Scatter (Revaluart-style)</h2>
+        <p class="muted" style="margin:0;">
+          Next: auction dots + your dot + log/linear toggle. We’ll wire this once Price Check + Workbench are stable.
+        </p>
+        <div id="rv-scatter" style="height:520px;"></div>
+      </div>
+    </section>
+
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
