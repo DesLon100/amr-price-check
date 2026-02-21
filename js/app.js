@@ -30,6 +30,8 @@ const pcUniverse = el("pc-universe");
 const pcLogToggle = el("pc-log");
 const pcBack = el("pc-back");
 
+const pcBands = el("pc-bands");
+const pcBandsToggle = el("pc-bands-toggle");
 let lastRun = null;
 
 // ----- Load CSV (PriceCheck-only) -----
@@ -158,3 +160,8 @@ function showForm() {
   pcResults?.classList.add("hidden");
   setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
 }
+pcBandsToggle?.addEventListener("click", () => {
+  const open = pcBandsToggle.getAttribute("aria-expanded") === "true";
+  pcBandsToggle.setAttribute("aria-expanded", String(!open));
+  pcBands?.classList.toggle("hidden", open);
+});
