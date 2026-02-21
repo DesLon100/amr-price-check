@@ -195,11 +195,11 @@ export function runPriceCheck({
         text: hoverText,
         hoverinfo: "text",
         marker: {
-          size: 7,
-          opacity: 0.75,
-          color: "rgba(0,0,0,0.55)",
-          line: { width: 0 }
-        }
+  size: 6,
+  opacity: 1,
+  color: "#2f3b63",   // ← use your button colour here
+  line: { width: 0 }
+}
       },
       {
         x: [userDate],
@@ -210,11 +210,11 @@ export function runPriceCheck({
         text: [`My artwork<br>Price: ${fmtGBP(price)}`],
         hoverinfo: "text",
         marker: {
-          size: 14,
-          opacity: 1,
-          color: "rgba(0,0,0,0.05)",
-          line: { width: 3, color: "rgba(0,0,0,0.75)" }
-        }
+  size: 14,
+  opacity: 1,
+  color: "#ffffff",
+  line: { width: 3, color: "#2f3b63" }  // same primary colour
+}
       }
     ],
     {
