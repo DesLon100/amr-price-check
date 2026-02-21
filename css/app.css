@@ -259,3 +259,18 @@ body{
 .pc-actions{
   margin-top:12px;
 }
+/* Section wrapper */
+.pc-section{
+  margin-top:20px;
+  padding-top:16px;
+  border-top:1px solid var(--line);
+}
+
+/* Section title */
+.pc-section-title{
+  margin:0 0 8px 0;
+  font-size:17px;
+  font-weight:700;
+  text-align:left;
+  letter-spacing:-0.2px;
+}
