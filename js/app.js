@@ -1,6 +1,6 @@
 // js/app.js
 import { workbench } from "./workbench.js";
-import { runPriceCheck } from "./pricecheck.js";
+import { runPriceCheck, setPriceCheckScale } from "./pricecheck.js";
 
 const el = (id)=>document.getElementById(id);
 
@@ -21,7 +21,6 @@ const pcArtist = el("pc-artist");
 const pcPrice = el("pc-price");
 const pcMonth = el("pc-month");
 const pcWindow = el("pc-window");
-const pcScale = el("pc-scale");
 const pcRun = el("pc-run");
 const pcBack = el("pc-back");
 
@@ -29,6 +28,10 @@ const pcResults = el("pc-results");
 const pcKpis = el("pc-kpis");
 const pcStructure = el("pc-structure");
 const pcUniverse = el("pc-universe");
+const pcLogToggle = el("pc-log");
+
+// Keep last run params so toggle can reapply without rerun
+let lastRun = null;
 
 // tab switching
 tabs.forEach(t=>{
@@ -62,12 +65,11 @@ file.addEventListener("change", async (e)=>{
     pcArtist.disabled = false;
     pcRun.disabled = false;
 
-    // default selection
-    if(artists[0]){
-      pcArtist.value = artists[0].id;
-    }
+    if(artists[0]) pcArtist.value = artists[0].id;
 
-    // reset screen state
+    // reset state
+    lastRun = null;
+    if(pcLogToggle) pcLogToggle.checked = false;
     showPriceCheckForm();
   }catch(err){
     alert(err.message || String(err));
@@ -81,8 +83,8 @@ pcRun.addEventListener("click", ()=>{
   if(!Number.isFinite(price) || price <= 0){ alert("Enter a valid price."); return; }
 
   const win = pcWindow.value === "all" ? null : Number(pcWindow.value);
-  const scale = pcScale?.value || "linear";
   const myMonth = (pcMonth.value || "").trim();
+  const yScale = (pcLogToggle && pcLogToggle.checked) ? "log" : "linear";
 
   try{
     runPriceCheck({
@@ -90,12 +92,14 @@ pcRun.addEventListener("click", ()=>{
       artistId,
       price,
       windowMonths: win,
-      myMonthYYYYMM: myMonth,     // optional
-      yScale: scale,              // linear | log
+      myMonthYYYYMM: myMonth,
+      yScale,
       elKpis: pcKpis,
       elStructure: pcStructure,
       elChart: pcUniverse
     });
+
+    lastRun = { artistId, price, windowMonths: win, myMonthYYYYMM: myMonth };
 
     // “new screen”
     pcResults.classList.remove("hidden");
@@ -107,6 +111,15 @@ pcRun.addEventListener("click", ()=>{
     alert(err.message || String(err));
   }
 });
+
+// Toggle log/linear AFTER render (no rerun)
+if(pcLogToggle){
+  pcLogToggle.addEventListener("change", ()=>{
+    if(!lastRun) return;
+    const scale = pcLogToggle.checked ? "log" : "linear";
+    setPriceCheckScale(pcUniverse, scale);
+  });
+}
 
 pcBack.addEventListener("click", ()=>{
   showPriceCheckForm();
