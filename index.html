@@ -38,22 +38,28 @@
           then summarise market structure using Workbench signals.
         </p>
 
-        <div class="grid2" style="margin-top:12px;">
-          <div>
-            <label>Artist</label>
-            <select id="pc-artist" disabled>
-              <option value="">Load data first…</option>
-            </select>
-          </div>
-          <div>
-            <label>Price (£)</label>
-            <input id="pc-price" type="number" placeholder="e.g. 25000" />
-          </div>
-          <div>
-            <label>Purchase month (optional)</label>
-            <input id="pc-month" placeholder="YYYYMM (e.g. 202411)" />
-            <div class="muted" style="margin-top:6px;">Optional: used later for time-relative context.</div>
-          </div>
+       <div class="form-stack">
+  <div class="form-field">
+    <label>Artist name</label>
+    <select id="pc-artist" disabled>
+      <option value="">Load data first…</option>
+    </select>
+  </div>
+
+  <div class="form-field">
+    <label>Price (£)</label>
+    <input id="pc-price" type="number" placeholder="e.g. 25000" />
+  </div>
+
+  <div class="form-field">
+    <label>Purchase month (optional)</label>
+    <input id="pc-month" placeholder="YYYYMM (e.g. 202411)" />
+  </div>
+
+  <button id="pc-run" class="btn primary fullwidth" disabled type="button">
+    Check price
+  </button>
+</div>
         </div>
 
         <div class="actions" style="gap:10px;">
