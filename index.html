@@ -56,7 +56,7 @@
       </div>
 
       <!-- RESULTS -->
-     <div id="pc-results" class="card hidden" style="margin-top:12px;">
+<div id="pc-results" class="card hidden" style="margin-top:12px;">
 
   <!-- Scatter chart -->
   <div class="pc-chart-wrap">
@@ -75,7 +75,10 @@
     </div>
   </div>
 
-  <!-- Clearing bands toggle -->
+  <!-- Investor-safe sentence (directly under toggle) -->
+  <div id="pc-context-text" class="pc-context-text"></div>
+
+  <!-- Show clearing bands (below investor-safe sentence) -->
   <div class="pc-context">
     <button id="pc-bands-toggle"
             class="pc-bands-toggle"
@@ -86,23 +89,16 @@
     </button>
   </div>
 
-  <!-- Investor-safe sentence (now BELOW toggle) -->
-  <div id="pc-context-text" class="pc-context-text"></div>
-
-  <!-- Collapsible clearing bands chart -->
+  <!-- Collapsible clearing bands -->
   <div id="pc-bands" class="pc-bands hidden">
     <div id="pc-bands-chart" class="pc-bands-chart"></div>
-
     <div id="pc-conc-note" class="pc-conc-note muted">
       Concentration insight coming soon.
     </div>
   </div>
 
-  <!-- Back button -->
-  <div style="margin-top:12px;">
-    <button id="pc-back" class="btn ghost" type="button">
-      Back
-    </button>
+  <div class="pc-actions">
+    <button id="pc-back" class="btn ghost" type="button">Back</button>
   </div>
 
 </div>
