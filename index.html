@@ -21,9 +21,7 @@
       </div>
     </div>
 
-    <!-- PRICE CHECK VIEW (only view for now) -->
     <section id="view-pricecheck" class="view">
-
       <div class="hero">
         <h1 class="hero-title">Check my artwork's price</h1>
         <p class="hero-sub">Instantly see where your artwork sits in the auction market.</p>
@@ -56,63 +54,61 @@
       </div>
 
       <!-- RESULTS -->
-<div id="pc-results" class="card hidden" style="margin-top:12px;">
+      <div id="pc-results" class="card hidden" style="margin-top:12px;">
 
-  <!-- Scatter chart -->
-  <div class="pc-chart-wrap">
-    <div id="pc-universe" class="pc-chart"></div>
+        <!-- Scatter chart -->
+        <div class="pc-chart-wrap">
+          <div id="pc-universe" class="pc-chart"></div>
 
-    <!-- Linear / Log toggle -->
-    <div class="pc-toggle-row">
-      <span class="muted">Linear</span>
+          <!-- Linear / Log toggle -->
+          <div class="pc-toggle-row">
+            <span class="muted">Linear</span>
 
-      <label class="switch">
-        <input id="pc-log" type="checkbox" />
-        <span class="slider"></span>
-      </label>
+            <label class="switch">
+              <input id="pc-log" type="checkbox" />
+              <span class="slider"></span>
+            </label>
 
-      <span class="muted">Log</span>
-    </div>
-  </div>
+            <span class="muted">Log</span>
+          </div>
+        </div>
 
-  <!-- Investor-safe sentence (directly under toggle) -->
-  <div class="pc-section">
-  <h3 class="pc-section-title">
-    How This Price Typically Performs
-  </h3>
+        <!-- Investor-safe sentence (directly under toggle) -->
+        <div class="pc-section">
+          <h3 class="pc-section-title">How This Price Typically Performs</h3>
+          <div id="pc-context-text" class="pc-context-text"></div>
+        </div>
 
-  <div id="pc-context-text" class="pc-context-text"></div>
-</div>
-
-  <!-- Show clearing bands (below investor-safe sentence) -->
-  <div class="pc-context">
-    <button id="pc-bands-toggle"
+        <!-- Show clearing bands (below investor-safe sentence) -->
+        <div class="pc-context">
+          <button
+            id="pc-bands-toggle"
             class="pc-bands-toggle"
             type="button"
             aria-expanded="false">
-      <span>Show clearing bands</span>
-      <span class="chev">▾</span>
-    </button>
-  </div>
+            <span>Show clearing bands</span>
+            <span class="chev">▾</span>
+          </button>
+        </div>
 
-  <!-- Collapsible clearing bands -->
-  <div class="pc-bands">
-  <div id="pc-bands-chart" class="pc-bands-chart"></div>
+        <!-- Collapsible clearing bands -->
+        <div id="pc-bands" class="pc-bands hidden">
+          <div id="pc-bands-chart" class="pc-bands-chart"></div>
 
-  <div class="pc-bands-legend">
-    <span class="dot dot-your"></span> Your price
-    <span class="dot dot-equiv" style="margin-left:14px;"></span> Equivalent level today
-  </div>
+          <div class="pc-bands-legend">
+            <span class="dot dot-your"></span> Your price
+            <span class="dot dot-equiv" style="margin-left:14px;"></span> Equivalent level today
+          </div>
 
-  <div id="pc-bands-caption" class="pc-bands-caption"></div>
-</div>
-  </div>
+          <div id="pc-bands-caption" class="pc-bands-caption"></div>
+        </div>
 
-  <div class="pc-actions">
-    <button id="pc-back" class="btn ghost" type="button">Back</button>
-  </div>
+        <!-- Back button -->
+        <div class="pc-actions">
+          <button id="pc-back" class="btn ghost" type="button">Back</button>
+        </div>
 
-</div>
+      </div>
     </section>
   </div>
 
