@@ -205,60 +205,109 @@ export function runPriceCheck({
   workbench,
   artistId,
   price,
-  windowMonths,
   myMonthYYYYMM,
   yScale,
-  elKpis,   // ignored now (safe)
-  elStory,  // safe
   elChart
-})
-renderBands(document.getElementById("pc-bands-chart"), {
-  p30, p50, p70,
-  priceNow: price,
-  equivNow,
-  captionText: "Clearing bands reflect the most recent 48 months. The marker shows the equivalent clearing level today at the same market position."
-});
-{
+}) {
+
   const all = workbench.getLotRows()
     .filter(r => r.id === artistId && Number.isFinite(r.price) && r.price > 0 && r.date)
     .sort((a,b)=>a.date - b.date);
 
-  if(all.length < 30) throw new Error(`Not enough auction lots for this artist (${all.length}).`);
+  if(all.length < 40) throw new Error("Not enough auction history.");
 
-  const cutoff = cutoffDateFromLast(all, windowMonths);
-  const rows = cutoff ? all.filter(r => r.date >= cutoff) : all;
+  const artworkDate = parseYYYYMM(myMonthYYYYMM) || all[all.length-1].date;
+  const latestDate  = all[all.length-1].date;
 
-  if(rows.length < 30) throw new Error(`Not enough lots in this window (${rows.length}). Try a wider window.`);
+  // ---- Build 48m windows ----
+  function window48(endDate){
+    const start = new Date(Date.UTC(
+      endDate.getUTCFullYear(),
+      endDate.getUTCMonth() - 47,
+      1
+    ));
+    return all.filter(r => r.date >= start && r.date <= endDate);
+  }
 
-  const prices = rows.map(r=>r.price).sort((a,b)=>a-b);
-  const p30 = quantile(prices, 0.30);
-  const p50 = quantile(prices, 0.50);
-  const p70 = quantile(prices, 0.70);
-  const pct = percentileRank(prices, price);
+  const thenRows = window48(artworkDate);
+  const nowRows  = window48(latestDate);
 
-  // Investor-safe sentence
-  const elContext = document.getElementById("pc-context-text");
-  if(elContext) elContext.textContent = clearingSentence(price, p30, p50, p70, pct);
+  if(thenRows.length < 25 || nowRows.length < 25)
+    throw new Error("Insufficient data in 48-month window.");
 
-  // Mini bands chart
-  renderBands(document.getElementById("pc-bands-chart"), price, p30, p50, p70);
+  // ---- Percentile in THEN window ----
+  const thenPrices = thenRows.map(r=>r.price).sort((a,b)=>a-b);
+  const pct = percentileRank(thenPrices, price);
 
-  // Scatter
-  const x = rows.map(r=>r.date);
-  const y = rows.map(r=>r.price);
+  // ---- Quartile band ----
+  const quartileIndex = Math.min(3, Math.floor(pct / 25));
 
-  const lastDate = rows[rows.length - 1].date;
-  const userDate = parseYYYYMM(myMonthYYYYMM) || lastDate;
+  function quartileAverage(rows, qIndex){
+    const prices = rows.map(r=>r.price).sort((a,b)=>a-b);
+    const qMin = qIndex * 0.25;
+    const qMax = (qIndex+1) * 0.25;
+    const low  = quantile(prices, qMin);
+    const high = quantile(prices, qMax);
+    const band = prices.filter(p => p >= low && p <= high);
+    return band.reduce((a,b)=>a+b,0) / band.length;
+  }
 
-  const artistName = workbench.getArtistName(artistId) || "Selected artist";
-  const scale = (yScale === "log") ? "log" : "linear";
+  const avgThen = quartileAverage(thenRows, quartileIndex);
+  const avgNow  = quartileAverage(nowRows, quartileIndex);
 
-  const custom = rows.map(r => ([
-    r.lotNo || "",
-    r.auctionId || "",
-    r.locationCode || "",
-    r.saleUrl || ""
-  ]));
+  let factor = (avgNow - avgThen) / avgThen;
+
+  // ---- Volatility limiter (max 25%) ----
+  const yearsElapsed = Math.max(1,
+    (latestDate - artworkDate) / (365*24*60*60*1000)
+  );
+
+  const maxMove = Math.min(0.25, 0.05 * yearsElapsed); // 5% per year ramp to 25%
+
+  if(factor > maxMove) factor = maxMove;
+  if(factor < -maxMove) factor = -maxMove;
+
+  const equivNow = price * (1 + factor);
+
+  // ---- NOW clearing bands ----
+  const nowPrices = nowRows.map(r=>r.price).sort((a,b)=>a-b);
+  const p30 = quantile(nowPrices, 0.30);
+  const p50 = quantile(nowPrices, 0.50);
+  const p70 = quantile(nowPrices, 0.70);
+
+  // ---- Render slider ----
+  renderBands(document.getElementById("pc-bands-chart"), {
+    p30, p50, p70,
+    priceNow: price,
+    equivNow,
+    captionText:
+      "Clearing bands reflect the most recent 48 months. " +
+      "The marker shows the equivalent clearing level today at the same market position."
+  });
+
+  // ---- Scatter (unchanged logic) ----
+  const x = all.map(r=>r.date);
+  const y = all.map(r=>r.price);
+
+  Plotly.newPlot(
+    elChart,
+    [{
+      x, y,
+      type: "scattergl",
+      mode: "markers",
+      marker: { size: 6, color:"#2f3b63" }
+    }],
+    {
+      margin: { l: 56, r: 18, t: 26, b: 48 },
+      yaxis: { type: (yScale==="log")?"log":"linear" },
+      paper_bgcolor:"rgba(0,0,0,0)",
+      plot_bgcolor:"rgba(0,0,0,0)"
+    },
+    { responsive:true }
+  );
+
+  return { pct, equivNow };
+}
 
   const hoverText = rows.map(r => {
     const loc = formatLocationCode(r.locationCode);
