@@ -8,15 +8,7 @@ const escapeHtml = (s)=>String(s).replace(/[&<>"']/g, m => ({
 }[m]));
 
 const file = el("file");
-const btnLoad = el("btnLoad");
 const status = el("status");
-
-// Views/tabs
-const tabs = Array.from(document.querySelectorAll(".tab"));
-const views = {
-  pricecheck: el("view-pricecheck"),
-  workbench: el("view-workbench")
-};
 
 // Price check elements
 const pcFormCard = el("pc-form-card");
@@ -24,35 +16,15 @@ const pcArtist = el("pc-artist");
 const pcPrice = el("pc-price");
 const pcMonth = el("pc-month");
 const pcRun = el("pc-run");
-const pcBack = el("pc-back");
 
 const pcResults = el("pc-results");
 const pcKpis = el("pc-kpis");
 const pcStory = el("pc-story");
 const pcUniverse = el("pc-universe");
 const pcLogToggle = el("pc-log");
-const pcSeeWorkbench = el("pc-see-workbench");
+const pcBack = el("pc-back");
 
 let lastRun = null;
-
-// Tab switching
-tabs.forEach(t=>{
-  t.addEventListener("click", ()=>{
-    tabs.forEach(x=>x.classList.remove("active"));
-    t.classList.add("active");
-
-    const v = t.getAttribute("data-view");
-    Object.values(views).forEach(sec=>sec?.classList.add("hidden"));
-    views[v]?.classList.remove("hidden");
-
-    setTimeout(()=>window.dispatchEvent(new Event("resize")), 40);
-  });
-});
-
-// Button opens hidden file input
-if(btnLoad && file){
-  btnLoad.addEventListener("click", ()=>file.click());
-}
 
 // Load CSV
 if(file){
@@ -64,25 +36,27 @@ if(file){
 
     try{
       const info = workbench.loadFromCSVText(text);
+
       if(status){
-        status.textContent = `Loaded ${info.rowCount.toLocaleString()} lots across ${info.artistCount.toLocaleString()} artists. (Local only)`;
+        status.textContent =
+          `Loaded ${info.rowCount.toLocaleString()} lots across ${info.artistCount.toLocaleString()} artists. (Local only)`;
       }
 
       // Populate artist dropdown (ArtistID under hood; name shown)
       const artists = workbench.getArtists();
-      pcArtist.innerHTML = `<option value="">Select artist…</option>` + artists.map(a =>
-        `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`
-      ).join("");
+      pcArtist.innerHTML =
+        `<option value="">Select artist…</option>` +
+        artists.map(a => `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`).join("");
 
       pcArtist.disabled = false;
       pcRun.disabled = false;
 
       if(artists[0]) pcArtist.value = artists[0].id;
 
-      // Reset state
+      // Reset view state
       lastRun = null;
       if(pcLogToggle) pcLogToggle.checked = false;
-      showPriceCheckForm();
+      showForm();
     }catch(err){
       alert(err.message || String(err));
     }
@@ -92,10 +66,10 @@ if(file){
 pcRun?.addEventListener("click", ()=>{
   const artistId = pcArtist.value;
   const price = Number(pcPrice.value);
+
   if(!artistId){ alert("Select an artist."); return; }
   if(!Number.isFinite(price) || price <= 0){ alert("Enter a valid price."); return; }
 
-  const win = null;
   const myMonth = (pcMonth.value || "").trim();
   const yScale = (pcLogToggle && pcLogToggle.checked) ? "log" : "linear";
 
@@ -104,7 +78,7 @@ pcRun?.addEventListener("click", ()=>{
       workbench,
       artistId,
       price,
-      windowMonths: win,
+      windowMonths: null,          // always full history
       myMonthYYYYMM: myMonth,
       yScale,
       elKpis: pcKpis,
@@ -112,14 +86,16 @@ pcRun?.addEventListener("click", ()=>{
       elChart: pcUniverse
     });
 
-    lastRun = { artistId, price, windowMonths: win, myMonthYYYYMM: myMonth };
+    lastRun = { artistId, price, myMonthYYYYMM: myMonth };
 
-    // “New screen”
+    // Results screen
     pcResults?.classList.remove("hidden");
     pcFormCard?.classList.add("hidden");
-    pcBack?.classList.remove("hidden");
-
     pcResults?.scrollIntoView({behavior:"smooth", block:"start"});
+
+    // Ensure Plotly sizes correctly
+    setTimeout(()=>window.dispatchEvent(new Event("resize")), 40);
+
   }catch(err){
     alert(err.message || String(err));
   }
@@ -133,17 +109,11 @@ pcLogToggle?.addEventListener("change", ()=>{
 });
 
 pcBack?.addEventListener("click", ()=>{
-  showPriceCheckForm();
+  showForm();
 });
 
-pcSeeWorkbench?.addEventListener("click", ()=>{
-  const tab = document.querySelector('.tab[data-view="workbench"]');
-  tab?.click();
-});
-
-function showPriceCheckForm(){
+function showForm(){
   pcFormCard?.classList.remove("hidden");
   pcResults?.classList.add("hidden");
-  pcBack?.classList.add("hidden");
   setTimeout(()=>window.dispatchEvent(new Event("resize")), 40);
 }
