@@ -208,29 +208,32 @@ export function runPriceCheck({
   const artistName = workbench.getArtistName(artistId) || "Selected artist";
   const scale = (yScale === "log") ? "log" : "linear";
   
-  // Extra hover/click metadata (may be blank for older rows)
+    // Extra hover/click metadata (may be blank for older rows)
   const custom = rows.map(r => ([
     r.lotNo || "",
     r.auctionId || "",
     r.locationCode || "",
     r.saleUrl || ""
   ]));
-  
+
+  const hoverText = rows.map(r => {
+    const loc = r.locationCode ? `Location: ${r.locationCode}` : "Location: —";
+    const auc = r.auctionId ? `AuctionID: ${r.auctionId}` : "AuctionID: —";
+    const lot = r.lotNo ? `Lot: ${r.lotNo}` : "Lot: —";
+    const url = r.saleUrl ? r.saleUrl : "";
+    return `${loc}<br>${auc}<br>${lot}${url ? "<br>" + url : ""}`;
+  });
+
   Plotly.newPlot(elChart, [
-       {
+    {
       x, y,
       type: "scattergl",
       mode: "markers",
       name: "Auction lots",
       customdata: custom,
-      marker: { size: 6, opacity: 0.55 },
-      hovertemplate:
-        "Price: %{y:,.0f}<br>" +
-        "Month: %{x|%Y-%m}<br>" +
-        "Location: %{customdata[2]}<br>" +
-        "AuctionID: %{customdata[1]}<br>" +
-        "Lot: %{customdata[0]}<br>" +
-        "%{customdata[3]}<extra></extra>"
+      text: hoverText,
+      hoverinfo: "text",
+      marker: { size: 6, opacity: 0.55 }
     },
     {
       x: [userDate],
@@ -238,6 +241,8 @@ export function runPriceCheck({
       type: "scatter",
       mode: "markers",
       name: "My artwork",
+      text: [`My artwork<br>Price: ${fmtGBP(price)}`],
+      hoverinfo: "text",
       marker: { size: 13, opacity: 1, line: { width: 2 } }
     }
   ], {
@@ -252,20 +257,20 @@ export function runPriceCheck({
     plot_bgcolor:"rgba(0,0,0,0)"
   }, { displayModeBar:false, responsive:true });
 
-  return { p30, p50, p70, pct, n: rows.length };
-}
+  // Ensure we don't stack click handlers on repeated runs
+  if(elChart.removeAllListeners) elChart.removeAllListeners("plotly_click");
+
   // Click a dot to open the SaleURL (if present)
   elChart.on("plotly_click", (ev) => {
     const p = ev?.points?.[0];
     if(!p) return;
-
-    // Only react to clicks on the auction-lots trace (curveNumber 0)
-    if(p.curveNumber !== 0) return;
-
+    if(p.curveNumber !== 0) return; // auction lots only
     const cd = p.customdata || [];
     const url = cd[3];
-
     if(url){
       window.open(url, "_blank", "noopener,noreferrer");
     }
   });
+
+  return { p30, p50, p70, pct, n: rows.length };
+  
