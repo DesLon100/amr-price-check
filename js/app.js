@@ -12,7 +12,9 @@ const tabs = Array.from(document.querySelectorAll(".tab"));
 const views = {
   pricecheck: el("view-pricecheck"),
   workbench: el("view-workbench"),
-  scatter: el("view-scatter")
+  const views = {
+  pricecheck: el("view-pricecheck"),
+  workbench: el("view-workbench")
 };
 
 // price check elements
