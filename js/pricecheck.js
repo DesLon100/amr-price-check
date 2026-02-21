@@ -211,7 +211,14 @@ export function runPriceCheck({
   elKpis,   // ignored now (safe)
   elStory,  // safe
   elChart
-}){
+})
+renderBands(document.getElementById("pc-bands-chart"), {
+  p30, p50, p70,
+  priceNow: price,
+  equivNow,
+  captionText: "Clearing bands reflect the most recent 48 months. The marker shows the equivalent clearing level today at the same market position."
+});
+{
   const all = workbench.getLotRows()
     .filter(r => r.id === artistId && Number.isFinite(r.price) && r.price > 0 && r.date)
     .sort((a,b)=>a.date - b.date);
