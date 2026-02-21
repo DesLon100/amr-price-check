@@ -56,51 +56,56 @@
       </div>
 
       <!-- RESULTS -->
-      <div id="pc-results" class="card hidden" style="margin-top:12px;">
-       <! <div class="kpis" id="pc-kpis"></div> !>
+     <div id="pc-results" class="card hidden" style="margin-top:12px;">
 
-        <div class="pc-chart-wrap" style="margin-top:14px;">
-          <div id="pc-universe" class="pc-chart"></div>
-<div class="pc-context">
-  <button id="pc-bands-toggle" class="pc-bands-toggle" type="button" aria-expanded="false">
-    <span>Show clearing bands</span>
-    <span class="chev">▾</span>
-  </button>
-</div>
+  <!-- Scatter chart -->
+  <div class="pc-chart-wrap">
+    <div id="pc-universe" class="pc-chart"></div>
 
-<div id="pc-context-text" class="pc-context-text"></div>
+    <!-- Linear / Log toggle -->
+    <div class="pc-toggle-row">
+      <span class="muted">Linear</span>
 
-  <button id="pc-bands-toggle" class="pc-bands-toggle" type="button" aria-expanded="false">
-    <span>Show clearing bands</span>
-    <span class="chev">▾</span>
-  </button>
-</div>
+      <label class="switch">
+        <input id="pc-log" type="checkbox" />
+        <span class="slider"></span>
+      </label>
 
-<div id="pc-bands" class="pc-bands hidden">
-  <div id="pc-bands-chart" class="pc-bands-chart"></div>
-  <div id="pc-conc-note" class="pc-conc-note muted">
-    Concentration insight (IQR share) coming soon.
+      <span class="muted">Log</span>
+    </div>
   </div>
+
+  <!-- Clearing bands toggle -->
+  <div class="pc-context">
+    <button id="pc-bands-toggle"
+            class="pc-bands-toggle"
+            type="button"
+            aria-expanded="false">
+      <span>Show clearing bands</span>
+      <span class="chev">▾</span>
+    </button>
+  </div>
+
+  <!-- Investor-safe sentence (now BELOW toggle) -->
+  <div id="pc-context-text" class="pc-context-text"></div>
+
+  <!-- Collapsible clearing bands chart -->
+  <div id="pc-bands" class="pc-bands hidden">
+    <div id="pc-bands-chart" class="pc-bands-chart"></div>
+
+    <div id="pc-conc-note" class="pc-conc-note muted">
+      Concentration insight coming soon.
+    </div>
+  </div>
+
+  <!-- Back button -->
+  <div style="margin-top:12px;">
+    <button id="pc-back" class="btn ghost" type="button">
+      Back
+    </button>
+  </div>
+
 </div>
-          <div class="pc-toggle-row">
-            <span class="muted">Linear</span>
-
-            <label class="switch">
-              <input id="pc-log" type="checkbox" />
-              <span class="slider"></span>
-            </label>
-
-            <span class="muted">Log</span>
-          </div>
-        </div>
-
-        <div id="pc-story" class="pc-story"></div>
-
-        <div style="margin-top:10px;">
-          <button id="pc-back" class="btn ghost" type="button">Back</button>
-        </div>
-      </div>
-
     </section>
   </div>
 
