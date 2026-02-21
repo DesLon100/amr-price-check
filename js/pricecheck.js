@@ -88,7 +88,21 @@ function marketStory(m){
   if(!m) return "";
   return "";
 }
+function clearingSentence(price, p30, p50, p70, pct){
+  const P = fmtGBP(price);
+  if(![p30,p50,p70,pct].every(Number.isFinite)) return "";
 
+  if(price < p30){
+    return `${P} sits below the “support” clearing band (p30). Historically, about ${Math.round(100-pct)}% of comparable lots cleared above this level, so this price is more sensitive to quality and timing.`;
+  }
+  if(price < p50){
+    return `${P} sits within the lower clearing band (between p30 and the median). This is broadly achievable, but outcomes tend to depend more on buyer depth and sale context.`;
+  }
+  if(price < p70){
+    return `${P} sits above the typical sale (above the median) but below the top-third threshold (p70). That’s a strong position versus most comparable auction results.`;
+  }
+  return `${P} is above the top-third clearing threshold (p70). Historically, only the stronger outcomes tend to clear above this level.`;
+}
 // Exposed so the toggle can update without rerunning
 export function setPriceCheckScale(elChart, scale){
   if(!elChart) return;
