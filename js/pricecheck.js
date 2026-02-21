@@ -272,7 +272,12 @@ export function runPriceCheck({
     ],
     {
       margin: { l: 56, r: 18, t: 26, b: 48 },
-      title: { text: `${artistName} — auction lots + my artwork`, font: { size: 14 } },
+      title: {
+  text: `<b>${artistName}</b> — auction lots + my artwork`,
+  font: { size: 15 },
+  x: 0,
+  xanchor: "left"
+},
 
       xaxis: {
         title: "Sale month",
