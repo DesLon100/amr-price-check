@@ -811,16 +811,54 @@ Included in rankings if Lots (last 24M) ≥ ${Number(els.minLots24.value)}.`;
 
     buildAggregates();
 
-    // Populate workbench artist dropdown (ArtistID values)
-    els.artistSelect.innerHTML =
-      `<option value="">Select artist…</option>` +
-      artists.map(a => `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`).join("");
-    els.artistSelect.disabled = false;
-    els.btnRecalc.disabled = false;
-    els.btnTop.disabled = false;
+  // If workbench UI exists (dashboard page), wire it.
+// If not (pricecheck page), skip safely.
+if (els && els.artistSelect) {
 
-    currentArtistId = artists[0]?.id || null;
-    if(currentArtistId) els.artistSelect.value = currentArtistId;
+  els.artistSelect.innerHTML =
+    `<option value="">Select artist…</option>` +
+    artists.map(a =>
+      `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`
+    ).join("");
+
+  els.artistSelect.disabled = false;
+  if (els.btnRecalc) els.btnRecalc.disabled = false;
+  if (els.btnTop) els.btnTop.disabled = false;
+
+  currentArtistId = artists[0]?.id || null;
+  if (currentArtistId) els.artistSelect.value = currentArtistId;
+
+  els.artistSelect.onchange = () => {
+    const id = els.artistSelect.value;
+    if (!id) return;
+    currentArtistId = id;
+    renderArtist(id);
+  };
+
+  if (els.btnRecalc) {
+    els.btnRecalc.onclick = () => { if (artists.length) recalcAll(); };
+  }
+
+  if (els.btnTop) {
+    els.btnTop.onclick = () => {
+      const t = document.getElementById("rankTable");
+      if (t) t.scrollIntoView({behavior:"smooth", block:"start"});
+    };
+  }
+
+  if (els.tab2) {
+    els.tab2.forEach(t=>{
+      t.onclick = () => {
+        els.tab2.forEach(x=>x.classList.remove("active"));
+        t.classList.add("active");
+        renderRankings(t.getAttribute("data-tab"));
+      };
+    });
+  }
+
+  recalcAll();
+  if (currentArtistId) renderArtist(currentArtistId);
+}
 
     // Wire workbench events once
     els.artistSelect.onchange = () => {
