@@ -230,3 +230,31 @@ body{
 .switch input:checked + .slider:before{
   transform:translateX(22px);
 }
+.pc-context{
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+  justify-content:space-between;
+  margin-top:10px;
+}
+.pc-context-text{
+  flex:1;
+  font-size:14px;
+  line-height:1.35;
+}
+.pc-bands-toggle{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  border:0;
+  background:transparent;
+  cursor:pointer;
+  padding:6px 8px;
+  font-weight:600;
+}
+.pc-bands-toggle .chev{ display:inline-block; transition:transform .15s ease; }
+.pc-bands-toggle[aria-expanded="true"] .chev{ transform:rotate(180deg); }
+
+.pc-bands{ margin-top:10px; padding-top:10px; border-top:1px solid rgba(0,0,0,0.08); }
+.pc-bands-chart{ height:110px; } /* small, not competing with scatter */
+.hidden{ display:none; }
