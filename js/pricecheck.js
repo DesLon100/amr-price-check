@@ -147,7 +147,19 @@ export function setPriceCheckScale(elChart, scale){
     "yaxis.autorange": true
   });
 }
+const HOUSE_MAP = { SOTH:"Sotheby’s", CHRI:"Christie’s", BONH:"Bonhams", PHIL:"Phillips" };
+const CITY_MAP  = { LOND:"London", NEWY:"New York", HONG:"Hong Kong", PARI:"Paris", GENE:"Geneva", ZURI:"Zurich", ONLI:"Online" };
 
+function formatLocationCode(code){
+  const raw = String(code || "").trim().toUpperCase();
+  if(!raw || raw === "NULL" || raw === "N/A") return "Location —";
+  if(raw.length < 5) return raw;
+  const suffix = raw.slice(-4);
+  const prefix = raw.slice(0, -4);
+  const house = HOUSE_MAP[prefix] || prefix;
+  const city  = CITY_MAP[suffix]  || suffix;
+  return `${house} — ${city}`;
+}
 export function runPriceCheck({
   workbench,
   artistId,
@@ -217,12 +229,13 @@ export function runPriceCheck({
   ]));
 
   const hoverText = rows.map(r => {
-    const loc = r.locationCode ? `Location: ${r.locationCode}` : "Location: —";
-    const auc = r.auctionId ? `AuctionID: ${r.auctionId}` : "AuctionID: —";
-    const lot = r.lotNo ? `Lot: ${r.lotNo}` : "Lot: —";
-    const url = r.saleUrl ? r.saleUrl : "";
-    return `${loc}<br>${auc}<br>${lot}${url ? "<br>" + url : ""}`;
-  });
+  const loc = formatLocationCode(r.locationCode);
+  const when = r.date
+    ? r.date.toLocaleString("en-GB", { month:"short", year:"numeric", timeZone:"UTC" })
+    : "";
+  const lot = (r.lotNo && String(r.lotNo).toUpperCase() !== "NULL") ? `Lot ${r.lotNo}` : "Lot —";
+  return `${loc}<br>${when}<br>${lot}<br><span style="opacity:.75">Click to open sale</span>`;
+});
 
   Plotly.newPlot(elChart, [
     {
@@ -251,6 +264,7 @@ export function runPriceCheck({
     xaxis: { title: "Sale month" },
     yaxis: { title: "Hammer price (GBP)", type: scale },
     hovermode: "closest",
+    hoverlabel: { bgcolor:"rgba(17,17,17,0.78)", bordercolor:"rgba(255,255,255,0.15)", font:{color:"#fff", size:12} },
     shapes: [hLine(p30), hLine(p50), hLine(p70)],
     annotations: [labelLine(p30,"p30"), labelLine(p50,"p50"), labelLine(p70,"p70")],
     paper_bgcolor:"rgba(0,0,0,0)",
