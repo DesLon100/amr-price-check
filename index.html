@@ -72,35 +72,29 @@
       </div>
 
       <div id="pc-results" class="card hidden" style="margin-top:12px;">
-        <div class="kpis" id="pc-kpis"></div>
+  <div class="kpis" id="pc-kpis"></div>
 
-       <div class="rowhead" style="margin-top:14px;">
+  <div class="pc-chart-wrap" style="margin-top:14px;">
+    <div id="pc-universe" class="pc-chart"></div>
 
+    <div class="pc-toggle-row">
+      <span class="muted">Linear</span>
 
-<div class="pc-chart-wrap">
-  <div id="pc-universe" class="pc-chart"></div>
+      <label class="switch">
+        <input id="pc-log" type="checkbox" />
+        <span class="slider"></span>
+      </label>
 
-  <div class="pc-toggle-row">
-    <span class="muted">Linear</span>
+      <span class="muted">Log</span>
+    </div>
+  </div>
 
-    <label class="switch">
-      <input id="pc-log" type="checkbox" />
-      <span class="slider"></span>
-    </label>
+  <div id="pc-story" class="pc-story"></div>
 
-    <span class="muted">Log</span>
+  <div style="margin-top:10px;">
+    <button id="pc-see-workbench" class="btn ghost" type="button">See Workbench</button>
   </div>
 </div>
-<div id="pc-universe" style="height:360px;"></div>
-
-    
-
-<div id="pc-story" class="pc-story"></div>
-
-<div style="margin-top:10px;">
-  <button id="pc-see-workbench" class="btn ghost" type="button">See Workbench</button>
-</div>
-      </div>
     </section>
 
     <!-- WORKBENCH VIEW -->
