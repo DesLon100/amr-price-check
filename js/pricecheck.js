@@ -34,6 +34,13 @@ function parseYYYYMM(s){
   return new Date(Date.UTC(y, m-1, 1));
 }
 
+function cutoffDateFromLast(rows, windowMonths){
+  if(!windowMonths) return null;
+  const last = rows[rows.length - 1]?.date;
+  if(!last) return null;
+  return new Date(Date.UTC(last.getUTCFullYear(), last.getUTCMonth()-(windowMonths-1), 1));
+}
+
 function kpi(label, value){
   return `
     <div class="kpi">
@@ -59,12 +66,35 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[m]));
 }
 
-function cutoffDateFromLast(rows, windowMonths){
-  if(!windowMonths) return null;
-  const last = rows[rows.length - 1]?.date;
-  if(!last) return null;
-  // inclusive window: last-(windowMonths-1)
-  return new Date(Date.UTC(last.getUTCFullYear(), last.getUTCMonth()-(windowMonths-1), 1));
+function hLine(y){
+  return {
+    type: "line",
+    x0: 0, x1: 1,
+    xref: "paper",
+    y0: y, y1: y,
+    yref: "y",
+    line: { width: 1, dash: "dot" }
+  };
+}
+
+function labelLine(y, text){
+  return {
+    x: 1,
+    xref: "paper",
+    xanchor: "left",
+    y: y,
+    yref: "y",
+    yanchor: "middle",
+    text,
+    showarrow: false,
+    font: { size: 11 }
+  };
+}
+
+export function setPriceCheckScale(elChart, scale){
+  if(!elChart) return;
+  const t = (scale === "log") ? "log" : "linear";
+  Plotly.relayout(elChart, {"yaxis.type": t});
 }
 
 export function runPriceCheck({
@@ -78,26 +108,24 @@ export function runPriceCheck({
   elStructure,
   elChart
 }) {
-  // Get all lots, filter to artist, sort by date
+  // Get all lots for this artist
   const all = workbench.getLotRows()
     .filter(r => r.id === artistId && Number.isFinite(r.price) && r.price > 0 && r.date)
     .sort((a,b)=>a.date - b.date);
 
   if(all.length < 30){
-    throw new Error(`Not enough lot rows for this artist (${all.length}).`);
+    throw new Error(`Not enough auction lots for this artist (${all.length}).`);
   }
 
-  // Apply window filter
+  // Window filter
   const cutoff = cutoffDateFromLast(all, windowMonths);
   const rows = cutoff ? all.filter(r => r.date >= cutoff) : all;
 
   if(rows.length < 30){
-    throw new Error(`Not enough lot rows in this window (${rows.length}). Try a wider window.`);
+    throw new Error(`Not enough lots in this window (${rows.length}). Try a wider window.`);
   }
 
-  // Percentile + bands computed on prices only
   const prices = rows.map(r=>r.price).sort((a,b)=>a-b);
-
   const p30 = quantile(prices, 0.30);
   const p50 = quantile(prices, 0.50);
   const p70 = quantile(prices, 0.70);
@@ -110,7 +138,6 @@ export function runPriceCheck({
     kpi("70th", fmtGBP(p70))
   ].join("");
 
-  // Workbench structural readout
   const m = workbench.getMetrics(artistId);
   if(m){
     elStructure.innerHTML = [
@@ -127,23 +154,16 @@ export function runPriceCheck({
     elStructure.innerHTML = `<div class="muted">Workbench metrics not available for this artist yet.</div>`;
   }
 
-  // Scatter universe: x=date, y=price
+  // Scatter data
   const x = rows.map(r=>r.date);
   const y = rows.map(r=>r.price);
 
-  // My artwork x-position:
-  // - if user provided YYYYMM -> use it
-  // - else use last auction month in the *filtered* dataset (your choice A)
+  // My artwork date: user month else last auction month in filtered dataset
   const lastDate = rows[rows.length - 1].date;
   const userDate = parseYYYYMM(myMonthYYYYMM) || lastDate;
 
   const artistName = workbench.getArtistName(artistId);
   const scale = (yScale === "log") ? "log" : "linear";
-
-  // Horizontal band lines (p30/p50/p70) + user point marker
-  const shapes = [
-    hLine(p30), hLine(p50), hLine(p70)
-  ];
 
   Plotly.newPlot(elChart, [
     {
@@ -167,40 +187,11 @@ export function runPriceCheck({
     xaxis: { title: "Sale month" },
     yaxis: { title: "Hammer price (GBP)", type: scale },
     hovermode: "closest",
-    shapes,
-    annotations: [
-      labelLine(p30, "p30"),
-      labelLine(p50, "p50"),
-      labelLine(p70, "p70"),
-    ],
+    shapes: [hLine(p30), hLine(p50), hLine(p70)],
+    annotations: [labelLine(p30,"p30"), labelLine(p50,"p50"), labelLine(p70,"p70")],
     paper_bgcolor:"rgba(0,0,0,0)",
     plot_bgcolor:"rgba(0,0,0,0)"
   }, { displayModeBar:false, responsive:true });
 
   return { p30, p50, p70, pct, n: rows.length };
-}
-
-function hLine(y){
-  return {
-    type: "line",
-    x0: 0, x1: 1,
-    xref: "paper",
-    y0: y, y1: y,
-    yref: "y",
-    line: { width: 1, dash: "dot" }
-  };
-}
-
-function labelLine(y, text){
-  return {
-    x: 1,
-    xref: "paper",
-    xanchor: "left",
-    y: y,
-    yref: "y",
-    yanchor: "middle",
-    text: text,
-    showarrow: false,
-    font: { size: 11 }
-  };
 }
