@@ -208,7 +208,7 @@ export function runPriceCheck({
   const artistName = workbench.getArtistName(artistId) || "Selected artist";
   const scale = (yScale === "log") ? "log" : "linear";
   
-    // Extra hover/click metadata (may be blank for older rows)
+  // Extra hover/click metadata (may be blank for older rows)
   const custom = rows.map(r => ([
     r.lotNo || "",
     r.auctionId || "",
@@ -257,20 +257,19 @@ export function runPriceCheck({
     plot_bgcolor:"rgba(0,0,0,0)"
   }, { displayModeBar:false, responsive:true });
 
-  // Ensure we don't stack click handlers on repeated runs
-  if(elChart.removeAllListeners) elChart.removeAllListeners("plotly_click");
+  // Prevent stacking handlers on repeated runs
+  if(elChart && elChart.removeAllListeners) elChart.removeAllListeners("plotly_click");
 
-  // Click a dot to open the SaleURL (if present)
-  elChart.on("plotly_click", (ev) => {
-    const p = ev?.points?.[0];
-    if(!p) return;
-    if(p.curveNumber !== 0) return; // auction lots only
-    const cd = p.customdata || [];
-    const url = cd[3];
-    if(url){
-      window.open(url, "_blank", "noopener,noreferrer");
-    }
-  });
+  if(elChart){
+    elChart.on("plotly_click", (ev) => {
+      const p = ev?.points?.[0];
+      if(!p) return;
+      if(p.curveNumber !== 0) return; // auction lots only
+      const cd = p.customdata || [];
+      const url = cd[3];
+      if(url) window.open(url, "_blank", "noopener,noreferrer");
+    });
+  }
 
   return { p30, p50, p70, pct, n: rows.length };
-  
+}
