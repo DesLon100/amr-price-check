@@ -212,7 +212,8 @@ export function runPriceCheck({
         marker: {
   size: 14,
   opacity: 1,
-  color: "#ffffff",
+  color: "
+#fee7b1",
   line: { width: 3, color: "#2f3b63" }  // same primary colour
 }
       }
