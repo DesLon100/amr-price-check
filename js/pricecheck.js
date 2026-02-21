@@ -90,7 +90,47 @@ function labelLine(y, text){
     font: { size: 11 }
   };
 }
+function marketStory(m){
+  if(!m) return "Workbench metrics aren’t available for this artist yet.";
 
+  const parts = [];
+
+  // Direction
+  if(Number.isFinite(m.meanCagr) && Number.isFinite(m.medianCagr)){
+    const meanUp = m.meanCagr >= 0;
+    const medUp  = m.medianCagr >= 0;
+    if(meanUp && medUp) parts.push("Prices have been trending higher over the selected window.");
+    else if(!meanUp && !medUp) parts.push("Prices have been trending lower over the selected window.");
+    else parts.push("Pricing signals are mixed: the average and the typical sale are moving differently.");
+  }
+
+  // Trophy vs broad
+  if(Number.isFinite(m.cagrDivergence)){
+    if(m.cagrDivergence > 0.03) parts.push("The rise looks top-end led (stronger performance in higher-priced lots).");
+    else if(m.cagrDivergence < -0.03) parts.push("The typical sale is doing better than the top end (less trophy influence).");
+    else parts.push("The move looks broad-based rather than driven by a handful of trophy lots.");
+  }
+
+  // Liquidity
+  if(Number.isFinite(m.lots12) && Number.isFinite(m.lots24)){
+    if(m.lots12 < Math.max(10, 0.35*m.lots24)) parts.push("Liquidity has softened recently (fewer lots coming to market in the last 12 months).");
+    else parts.push("Liquidity looks steady (recent lot flow is broadly consistent).");
+  }
+
+  // Concentration
+  if(Number.isFinite(m.concLatest) && Number.isFinite(m.concDeltaWin)){
+    if(m.concDeltaWin > 0.05) parts.push("Value concentration has increased: a larger share of turnover is coming from the top decile.");
+    else if(m.concDeltaWin < -0.05) parts.push("Value concentration has eased: turnover is spreading more evenly across lots.");
+  }
+
+  // Confidence
+  if(Number.isFinite(m.r2)){
+    if(m.r2 >= 0.55) parts.push("The trend is relatively clean (higher confidence signal).");
+    else if(m.r2 <= 0.25) parts.push("The trend is noisy (treat as a weak signal).");
+  }
+
+  return parts.join(" ");
+}
 export function setPriceCheckScale(elChart, scale){
   if(!elChart) return;
   const t = (scale === "log") ? "log" : "linear";
