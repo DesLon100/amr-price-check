@@ -31,7 +31,13 @@ const pcKpis = el("pc-kpis");
 const pcStructure = el("pc-structure");
 const pcUniverse = el("pc-universe");
 const pcLogToggle = el("pc-log");
-
+const pcStory = el("pc-story");
+const pcSeeWorkbench = el("pc-see-workbench");
+pcSeeWorkbench?.addEventListener("click", ()=>{
+  // Activate Workbench tab
+  const tab = document.querySelector('.tab[data-view="workbench"]');
+  tab?.click();
+});
 // Keep last run params so toggle can reapply without rerun
 let lastRun = null;
 
