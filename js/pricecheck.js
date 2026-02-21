@@ -76,8 +76,14 @@ function hLine(y){
     xref: "paper",
     y0: y, y1: y,
     yref: "y",
-    line: { width: 1, dash: "dot" }
+    layer: "above",
+    line: {
+      width: 1,
+      dash: "dot",
+      color: "rgba(0,0,0,0.35)"
+    }
   };
+}
 }
 
 function labelLine(y, text){
@@ -248,8 +254,12 @@ export function runPriceCheck({
         customdata: custom,
         text: hoverText,
         hoverinfo: "text",
-        marker: { size: 6, opacity: 0.55 } // dots stay visible
-      },
+        marker: {
+  size: 7,
+  opacity: 0.75,
+  color: "rgba(0,0,0,0.55)",
+  line: { width: 0 }
+},
       {
         x: [userDate],
         y: [price],
@@ -258,8 +268,12 @@ export function runPriceCheck({
         name: "My artwork",
         text: [`My artwork<br>Price: ${fmtGBP(price)}`],
         hoverinfo: "text",
-        marker: { size: 13, opacity: 1, line: { width: 2 } }
-      }
+        marker: {
+  size: 14,
+  opacity: 1,
+  color: "rgba(0,0,0,0.05)",
+  line: { width: 3, color: "rgba(0,0,0,0.75)" }
+}
     ],
     {
       margin: { l: 56, r: 18, t: 26, b: 48 },
@@ -308,7 +322,7 @@ export function runPriceCheck({
       paper_bgcolor: "rgba(0,0,0,0)",
       plot_bgcolor: "rgba(0,0,0,0)"
     },
-    { displayModeBar: false, responsive: true }
+    { displayModeBar: true, responsive: true }
   );
 
   // Prevent stacking handlers on repeated runs
