@@ -201,7 +201,64 @@ if(elContext){
     const lot = (r.lotNo && String(r.lotNo).toUpperCase() !== "NULL") ? `Lot ${r.lotNo}` : "Lot —";
     return `${loc}<br>${when}<br>${lot}<br><span style="opacity:.75">Click to open sale</span>`;
   });
+  function renderBands(el, price, p30, p50, p70){
+  if(!el) return;
+  const xs = [p30, p50, p70, price].filter(Number.isFinite);
+  if(xs.length < 4) { el.innerHTML = ""; return; }
 
+  Plotly.newPlot(el, [
+    // band line (p30->p70)
+    {
+      x: [p30, p70],
+      y: [0, 0],
+      mode: "lines",
+      line: { width: 10, color: "rgba(0,0,0,0.10)" },
+      hoverinfo: "skip",
+      showlegend: false
+    },
+    // median tick
+    {
+      x: [p50, p50],
+      y: [-0.12, 0.12],
+      mode: "lines",
+      line: { width: 2, color: "rgba(0,0,0,0.35)" },
+      hoverinfo: "skip",
+      showlegend: false
+    },
+    // your price marker
+    {
+      x: [price],
+      y: [0],
+      mode: "markers",
+      marker: { size: 12, color: "rgba(0,0,0,0.75)" },
+      text: [`Your price: ${fmtGBP(price)}`],
+      hoverinfo: "text",
+      showlegend: false
+    }
+  ], {
+    margin: { l: 56, r: 18, t: 6, b: 28 },
+    xaxis: {
+      type: "linear",
+      showgrid: false,
+      zeroline: false,
+      showline: false,
+      ticks: "outside",
+      ticklen: 4,
+      tickcolor: "rgba(0,0,0,0.18)",
+      tickfont: { size: 12 },
+      tickprefix: "£",
+      separatethousands: true
+    },
+    yaxis: { visible: false },
+    annotations: [
+      { x:p30, y:0.28, xref:"x", yref:"y", text:`p30 ${fmtGBP(p30)}`, showarrow:false, font:{size:11, color:"rgba(0,0,0,0.55)"} },
+      { x:p50, y:0.28, xref:"x", yref:"y", text:`median ${fmtGBP(p50)}`, showarrow:false, font:{size:11, color:"rgba(0,0,0,0.55)"} },
+      { x:p70, y:0.28, xref:"x", yref:"y", text:`p70 ${fmtGBP(p70)}`, showarrow:false, font:{size:11, color:"rgba(0,0,0,0.55)"} }
+    ],
+    paper_bgcolor:"rgba(0,0,0,0)",
+    plot_bgcolor:"rgba(0,0,0,0)"
+  }, { displayModeBar:false, responsive:true });
+}
   Plotly.newPlot(
     elChart,
     [
