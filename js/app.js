@@ -96,7 +96,7 @@ pcRun?.addEventListener("click", ()=>{
   if(!artistId){ alert("Select an artist."); return; }
   if(!Number.isFinite(price) || price <= 0){ alert("Enter a valid price."); return; }
 
-  const win = (pcWindow.value === "all") ? null : Number(pcWindow.value);
+  const win = null;
   const myMonth = (pcMonth.value || "").trim();
   const yScale = (pcLogToggle && pcLogToggle.checked) ? "log" : "linear";
 
