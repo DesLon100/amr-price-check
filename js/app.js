@@ -16,11 +16,15 @@ const views = {
 };
 
 // price check elements
+const pcFormCard = el("pc-form-card");
 const pcArtist = el("pc-artist");
 const pcPrice = el("pc-price");
 const pcMonth = el("pc-month");
 const pcWindow = el("pc-window");
+const pcScale = el("pc-scale");
 const pcRun = el("pc-run");
+const pcBack = el("pc-back");
+
 const pcResults = el("pc-results");
 const pcKpis = el("pc-kpis");
 const pcStructure = el("pc-structure");
@@ -36,7 +40,6 @@ tabs.forEach(t=>{
     Object.values(views).forEach(sec=>sec.classList.add("hidden"));
     views[v].classList.remove("hidden");
 
-    // ensure Plotly resizes when switching
     setTimeout(()=>{ window.dispatchEvent(new Event("resize")); }, 40);
   });
 });
@@ -59,10 +62,13 @@ file.addEventListener("change", async (e)=>{
     pcArtist.disabled = false;
     pcRun.disabled = false;
 
-    // default selection sync with workbench
+    // default selection
     if(artists[0]){
       pcArtist.value = artists[0].id;
     }
+
+    // reset screen state
+    showPriceCheckForm();
   }catch(err){
     alert(err.message || String(err));
   }
@@ -75,6 +81,8 @@ pcRun.addEventListener("click", ()=>{
   if(!Number.isFinite(price) || price <= 0){ alert("Enter a valid price."); return; }
 
   const win = pcWindow.value === "all" ? null : Number(pcWindow.value);
+  const scale = pcScale?.value || "linear";
+  const myMonth = (pcMonth.value || "").trim();
 
   try{
     runPriceCheck({
@@ -82,17 +90,34 @@ pcRun.addEventListener("click", ()=>{
       artistId,
       price,
       windowMonths: win,
+      myMonthYYYYMM: myMonth,     // optional
+      yScale: scale,              // linear | log
       elKpis: pcKpis,
       elStructure: pcStructure,
       elChart: pcUniverse
     });
 
+    // “new screen”
     pcResults.classList.remove("hidden");
+    pcFormCard.classList.add("hidden");
+    pcBack.classList.remove("hidden");
+
     pcResults.scrollIntoView({behavior:"smooth", block:"start"});
   }catch(err){
     alert(err.message || String(err));
   }
 });
+
+pcBack.addEventListener("click", ()=>{
+  showPriceCheckForm();
+});
+
+function showPriceCheckForm(){
+  pcFormCard.classList.remove("hidden");
+  pcResults.classList.add("hidden");
+  pcBack.classList.add("hidden");
+  setTimeout(()=>{ window.dispatchEvent(new Event("resize")); }, 40);
+}
 
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[m]));
