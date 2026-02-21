@@ -2,17 +2,16 @@
 import { workbench } from "./workbench.js";
 import { runPriceCheck, setPriceCheckScale } from "./pricecheck.js";
 
-const el = (id)=>document.getElementById(id);
+const el = (id) => document.getElementById(id);
 
 const file = el("file");
+const btnLoad = el("btnLoad");
 const status = el("status");
 
-// views
+// ---------- Views ----------
 const tabs = Array.from(document.querySelectorAll(".tab"));
+
 const views = {
-  pricecheck: el("view-pricecheck"),
-  workbench: el("view-workbench"),
-  const views = {
   pricecheck: el("view-pricecheck"),
   workbench: el("view-workbench")
 };
