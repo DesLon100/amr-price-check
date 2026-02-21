@@ -94,7 +94,11 @@ function labelLine(y, text){
 export function setPriceCheckScale(elChart, scale){
   if(!elChart) return;
   const t = (scale === "log") ? "log" : "linear";
-  Plotly.relayout(elChart, {"yaxis.type": t});
+
+  Plotly.relayout(elChart, {
+    "yaxis.type": t,
+    "yaxis.autorange": true
+  });
 }
 
 export function runPriceCheck({
