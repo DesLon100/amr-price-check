@@ -35,31 +35,32 @@ if(file){
     const text = await f.text();
 
     try{
-      const info = workbench.loadFromCSVText(text);
+  const data = loadPriceCheckCSV(text);
 
-      if(status){
-        status.textContent =
-          `Loaded ${info.rowCount.toLocaleString()} lots across ${info.artistCount.toLocaleString()} artists. (Local only)`;
-      }
+  // store globally for runPriceCheck calls
+  window.__pcData = data;
 
-      // Populate artist dropdown (ArtistID under hood; name shown)
-      const artists = workbench.getArtists();
-      pcArtist.innerHTML =
-        `<option value="">Select artist…</option>` +
-        artists.map(a => `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`).join("");
+  if(status){
+    status.textContent =
+      `Loaded ${data.lotRows.length.toLocaleString()} lots across ${data.artists.length.toLocaleString()} artists. (Local only)`;
+  }
 
-      pcArtist.disabled = false;
-      pcRun.disabled = false;
+  pcArtist.innerHTML =
+    `<option value="">Select artist…</option>` +
+    data.artists.map(a => `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`).join("");
 
-      if(artists[0]) pcArtist.value = artists[0].id;
+  pcArtist.disabled = false;
+  pcRun.disabled = false;
 
-      // Reset view state
-      lastRun = null;
-      if(pcLogToggle) pcLogToggle.checked = false;
-      showForm();
-    }catch(err){
-      alert(err.message || String(err));
-    }
+  if(data.artists[0]) pcArtist.value = data.artists[0].id;
+
+  lastRun = null;
+  if(pcLogToggle) pcLogToggle.checked = false;
+  showForm();
+
+}catch(err){
+  alert(err.message || String(err));
+}
   });
 }
 
