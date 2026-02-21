@@ -1,5 +1,5 @@
 // js/app.js
-import { runPriceCheck, setPriceCheckScale } from "./pricecheck.js";
+import { runPriceCheck } from "./pricecheck.js";
 import { loadPriceCheckCSV } from "./data.js";
 
 const el = (id) => document.getElementById(id);
@@ -11,6 +11,15 @@ const escapeHtml = (s) =>
     '"': "&quot;",
     "'": "&#039;",
   }[m]));
+
+// Local helper so app.js does not depend on an export that may disappear
+function setPriceCheckScale(elChart, scale) {
+  if (!elChart) return;
+  const t = scale === "log" ? "log" : "linear";
+  if (window.Plotly) {
+    Plotly.relayout(elChart, { "yaxis.type": t, "yaxis.autorange": true });
+  }
+}
 
 // Top bar
 const file = el("file");
@@ -28,12 +37,14 @@ const pcUniverse = el("pc-universe");
 const pcLogToggle = el("pc-log");
 const pcBack = el("pc-back");
 
-const pcStory = el("pc-story"); // harmless if empty
-const pcKpis = el("pc-kpis");   // harmless if removed from HTML
+// Optional (safe if not present)
+const pcStory = el("pc-story");
+const pcKpis = el("pc-kpis");
 
-// Bands UI
-const pcBands = el("pc-bands");
+// Bands UI (your HTML currently has class="pc-bands", not id="pc-bands")
 const pcBandsToggle = el("pc-bands-toggle");
+const pcBands =
+  el("pc-bands") || document.querySelector(".pc-bands") || null;
 
 let lastRun = null;
 
@@ -47,30 +58,41 @@ file?.addEventListener("change", async (e) => {
     const data = loadPriceCheckCSV(text);
     window.__pcData = data;
 
-    status && (status.textContent =
-      `Loaded ${data.lotRows.length.toLocaleString()} lots across ${data.artists.length.toLocaleString()} artists. (Local only)`);
+    if (status) {
+      status.textContent =
+        `Loaded ${data.lotRows.length.toLocaleString()} lots across ` +
+        `${data.artists.length.toLocaleString()} artists. (Local only)`;
+    }
 
-    pcArtist.innerHTML =
-      `<option value="">Select artist…</option>` +
-      data.artists.map(a =>
-        `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`
-      ).join("");
+    if (pcArtist) {
+      pcArtist.innerHTML =
+        `<option value="">Select artist…</option>` +
+        data.artists
+          .map(
+            (a) =>
+              `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`
+          )
+          .join("");
+      pcArtist.disabled = false;
+      if (data.artists[0]) pcArtist.value = data.artists[0].id;
+    }
 
-    pcArtist.disabled = false;
-    pcRun.disabled = false;
-
-    if (data.artists[0]) pcArtist.value = data.artists[0].id;
+    if (pcRun) pcRun.disabled = false;
 
     lastRun = null;
-    pcLogToggle && (pcLogToggle.checked = false);
+    if (pcLogToggle) pcLogToggle.checked = false;
+
     collapseBands();
     showForm();
   } catch (err) {
     alert(err?.message || String(err));
-    status && (status.textContent = "No dataset loaded.");
-    pcArtist.disabled = true;
-    pcArtist.innerHTML = `<option value="">Load data first…</option>`;
-    pcRun.disabled = true;
+    if (status) status.textContent = "No dataset loaded.";
+
+    if (pcArtist) {
+      pcArtist.disabled = true;
+      pcArtist.innerHTML = `<option value="">Load data first…</option>`;
+    }
+    if (pcRun) pcRun.disabled = true;
 
     lastRun = null;
     collapseBands();
@@ -92,10 +114,11 @@ pcRun?.addEventListener("click", () => {
   const myMonth = (pcMonth?.value || "").trim();
   const yScale = pcLogToggle?.checked ? "log" : "linear";
 
+  // Workbench-lite adapter (only what pricecheck.js expects)
   const wbLite = {
     getLotRows: () => data.lotRows,
     getArtistName: (id) => data.getArtistName(id),
-    getMetrics: (_id) => null
+    getMetrics: (_id) => null,
   };
 
   try {
@@ -103,12 +126,14 @@ pcRun?.addEventListener("click", () => {
       workbench: wbLite,
       artistId,
       price,
-      windowMonths: null,
       myMonthYYYYMM: myMonth,
       yScale,
-      elKpis: pcKpis,     // safe even if KPI div removed
-      elStory: pcStory,   // safe
-      elChart: pcUniverse
+      elChart: pcUniverse,
+
+      // harmless if pricecheck.js ignores them
+      elKpis: pcKpis,
+      elStory: pcStory,
+      windowMonths: null,
     });
 
     lastRun = { artistId, price, myMonthYYYYMM: myMonth };
@@ -120,7 +145,6 @@ pcRun?.addEventListener("click", () => {
     pcFormCard?.classList.add("hidden");
     pcResults?.scrollIntoView({ behavior: "smooth", block: "start" });
 
-    // Plotly sizing nudge
     setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
   } catch (err) {
     alert(err?.message || String(err));
