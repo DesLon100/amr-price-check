@@ -237,62 +237,79 @@ export function runPriceCheck({
   return `${loc}<br>${when}<br>${lot}<br><span style="opacity:.75">Click to open sale</span>`;
 });
 
-   Plotly.newPlot(elChart, [ /* traces */ ], {
-    margin: { l: 56, r: 18, t: 26, b: 48 },
+  Plotly.newPlot(
+    elChart,
+    [
+      {
+        x, y,
+        type: "scattergl",
+        mode: "markers",
+        name: "Auction lots",
+        customdata: custom,
+        text: hoverText,
+        hoverinfo: "text",
+        marker: { size: 6, opacity: 0.55 } // dots stay visible
+      },
+      {
+        x: [userDate],
+        y: [price],
+        type: "scatter",
+        mode: "markers",
+        name: "My artwork",
+        text: [`My artwork<br>Price: ${fmtGBP(price)}`],
+        hoverinfo: "text",
+        marker: { size: 13, opacity: 1, line: { width: 2 } }
+      }
+    ],
+    {
+      margin: { l: 56, r: 18, t: 26, b: 48 },
+      title: { text: `${artistName} — auction lots + my artwork`, font: { size: 14 } },
 
-    title: { text: `${artistName} — auction lots + my artwork`, font: { size: 14 } },
+      // Minimal axes (no gridlines / axis lines)
+      xaxis: {
+        title: "Sale month",
+        showgrid: false,
+        zeroline: false,
+        showline: false,
+        ticks: "outside",
+        ticklen: 4,
+        tickwidth: 1,
+        tickcolor: "rgba(0,0,0,0.18)",
+        tickfont: { size: 12 },
+        titlefont: { size: 12 }
+      },
+      yaxis: {
+        title: "Hammer price (GBP)",
+        type: scale,
+        showgrid: false,
+        zeroline: false,
+        showline: false,
+        ticks: "outside",
+        ticklen: 4,
+        tickwidth: 1,
+        tickcolor: "rgba(0,0,0,0.18)",
+        tickfont: { size: 12 },
+        titlefont: { size: 12 },
+        separatethousands: true,
+        automargin: true
+      },
 
-    // Zoopla-style: no chart lines/grid, minimal ticks
-    xaxis: {
-      title: "Sale month",
-      showgrid: false,
-      zeroline: false,
-      showline: false,
-      ticks: "outside",
-      ticklen: 4,
-      tickwidth: 1,
-      tickcolor: "rgba(0,0,0,0.18)",
-      tickfont: { size: 12 },
-      titlefont: { size: 12 },
-      showticklabels: true
+      hovermode: "closest",
+      hoverlabel: {
+        bgcolor: "rgba(17,17,17,0.82)",
+        bordercolor: "rgba(255,255,255,0.12)",
+        font: { color: "#fff", size: 12 }
+      },
+
+      // Keep percentile lines + labels
+      shapes: [hLine(p30), hLine(p50), hLine(p70)],
+      annotations: [labelLine(p30,"p30"), labelLine(p50,"p50"), labelLine(p70,"p70")],
+
+      paper_bgcolor: "rgba(0,0,0,0)",
+      plot_bgcolor: "rgba(0,0,0,0)"
     },
-
-    yaxis: {
-      title: "Hammer price (GBP)",
-      type: scale,
-
-      showgrid: false,
-      zeroline: false,
-      showline: false,
-
-      ticks: "outside",
-      ticklen: 4,
-      tickwidth: 1,
-      tickcolor: "rgba(0,0,0,0.18)",
-      tickfont: { size: 12 },
-      titlefont: { size: 12 },
-
-      // keeps labels clean on log too
-      separatethousands: true,
-      automargin: true
-    },
-
-    hovermode: "closest",
-
-    // Keep hover readable without heavy styling
-    hoverlabel: {
-      bgcolor: "rgba(17,17,17,0.82)",
-      bordercolor: "rgba(255,255,255,0.12)",
-      font: { color: "#fff", size: 12 }
-    },
-
-    // Percentile bands stay (optional). If you also want those gone, see note below.
-    shapes: [hLine(p30), hLine(p50), hLine(p70)],
-    annotations: [labelLine(p30,"p30"), labelLine(p50,"p50"), labelLine(p70,"p70")],
-
-    paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "rgba(0,0,0,0)"
-  }, { displayModeBar:false, responsive:true });
+    { displayModeBar: false, responsive: true }
+  );
 
   // Prevent stacking handlers on repeated runs
   if(elChart && elChart.removeAllListeners) elChart.removeAllListeners("plotly_click");
