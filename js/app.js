@@ -24,11 +24,12 @@ const pcMonth = el("pc-month");
 const pcRun = el("pc-run");
 
 const pcResults = el("pc-results");
-const pcKpis = el("pc-kpis");
-const pcStory = el("pc-story");
 const pcUniverse = el("pc-universe");
 const pcLogToggle = el("pc-log");
 const pcBack = el("pc-back");
+
+const pcStory = el("pc-story"); // harmless if empty
+const pcKpis = el("pc-kpis");   // harmless if removed from HTML
 
 // Bands UI
 const pcBands = el("pc-bands");
@@ -36,90 +37,65 @@ const pcBandsToggle = el("pc-bands-toggle");
 
 let lastRun = null;
 
-// ----- Load CSV (PriceCheck-only) -----
-if (file) {
-  file.addEventListener("change", async (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
+// ----- Load CSV -----
+file?.addEventListener("change", async (e) => {
+  const f = e.target.files?.[0];
+  if (!f) return;
 
-    try {
-      const text = await f.text();
-      const data = loadPriceCheckCSV(text);
+  try {
+    const text = await f.text();
+    const data = loadPriceCheckCSV(text);
+    window.__pcData = data;
 
-      // Store globally for other handlers
-      window.__pcData = data;
+    status && (status.textContent =
+      `Loaded ${data.lotRows.length.toLocaleString()} lots across ${data.artists.length.toLocaleString()} artists. (Local only)`);
 
-      if (status) {
-        status.textContent =
-          `Loaded ${data.lotRows.length.toLocaleString()} lots across ` +
-          `${data.artists.length.toLocaleString()} artists. (Local only)`;
-      }
+    pcArtist.innerHTML =
+      `<option value="">Select artist…</option>` +
+      data.artists.map(a =>
+        `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`
+      ).join("");
 
-      if (pcArtist) {
-        pcArtist.innerHTML =
-          `<option value="">Select artist…</option>` +
-          data.artists
-            .map(
-              (a) =>
-                `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`
-            )
-            .join("");
+    pcArtist.disabled = false;
+    pcRun.disabled = false;
 
-        pcArtist.disabled = false;
-        if (data.artists[0]) pcArtist.value = data.artists[0].id;
-      }
+    if (data.artists[0]) pcArtist.value = data.artists[0].id;
 
-      if (pcRun) pcRun.disabled = false;
+    lastRun = null;
+    pcLogToggle && (pcLogToggle.checked = false);
+    collapseBands();
+    showForm();
+  } catch (err) {
+    alert(err?.message || String(err));
+    status && (status.textContent = "No dataset loaded.");
+    pcArtist.disabled = true;
+    pcArtist.innerHTML = `<option value="">Load data first…</option>`;
+    pcRun.disabled = true;
 
-      // Reset state + view
-      lastRun = null;
-      if (pcLogToggle) pcLogToggle.checked = false;
-      collapseBands();          // NEW: keep UI tidy
-      showForm();
-    } catch (err) {
-      alert(err?.message || String(err));
-      if (status) status.textContent = "No dataset loaded.";
-      if (pcArtist) {
-        pcArtist.disabled = true;
-        pcArtist.innerHTML = `<option value="">Load data first…</option>`;
-      }
-      if (pcRun) pcRun.disabled = true;
-
-      lastRun = null;
-      collapseBands();          // NEW
-      showForm();
-    }
-  });
-}
+    lastRun = null;
+    collapseBands();
+    showForm();
+  }
+});
 
 // ----- Run Price Check -----
 pcRun?.addEventListener("click", () => {
   const artistId = pcArtist?.value || "";
   const price = Number(pcPrice?.value);
 
-  if (!artistId) {
-    alert("Select an artist.");
-    return;
-  }
-  if (!Number.isFinite(price) || price <= 0) {
-    alert("Enter a valid price.");
-    return;
-  }
+  if (!artistId) return alert("Select an artist.");
+  if (!Number.isFinite(price) || price <= 0) return alert("Enter a valid price.");
 
   const data = window.__pcData;
-  if (!data) {
-    alert("Load data first.");
-    return;
-  }
+  if (!data) return alert("Load data first.");
 
   const myMonth = (pcMonth?.value || "").trim();
   const yScale = pcLogToggle?.checked ? "log" : "linear";
 
-  // Workbench-lite adapter: provides ONLY what pricecheck.js needs
   const wbLite = {
     getLotRows: () => data.lotRows,
     getArtistName: (id) => data.getArtistName(id),
-    getMetrics: (_id) => null, // parked for now
+    getMetrics: (_id) => null
   };
 
   try {
@@ -130,33 +106,31 @@ pcRun?.addEventListener("click", () => {
       windowMonths: null,
       myMonthYYYYMM: myMonth,
       yScale,
-      elKpis: pcKpis,
-      elStory: pcStory,
-      elChart: pcUniverse,
+      elKpis: pcKpis,     // safe even if KPI div removed
+      elStory: pcStory,   // safe
+      elChart: pcUniverse
     });
 
     lastRun = { artistId, price, myMonthYYYYMM: myMonth };
 
-    // Default the bands panel to collapsed on each run
-    collapseBands();            // NEW
+    // Keep bands collapsed by default each run
+    collapseBands();
 
-    // Results screen
     pcResults?.classList.remove("hidden");
     pcFormCard?.classList.add("hidden");
     pcResults?.scrollIntoView({ behavior: "smooth", block: "start" });
 
-    // Ensure Plotly sizes correctly
+    // Plotly sizing nudge
     setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
   } catch (err) {
     alert(err?.message || String(err));
   }
 });
 
-// ----- Toggle y-scale AFTER chart exists -----
+// ----- Toggle y-scale -----
 pcLogToggle?.addEventListener("change", () => {
   if (!lastRun) return;
-  const scale = pcLogToggle.checked ? "log" : "linear";
-  setPriceCheckScale(pcUniverse, scale);
+  setPriceCheckScale(pcUniverse, pcLogToggle.checked ? "log" : "linear");
 });
 
 // ----- Bands toggle -----
@@ -164,12 +138,17 @@ pcBandsToggle?.addEventListener("click", () => {
   const open = pcBandsToggle.getAttribute("aria-expanded") === "true";
   pcBandsToggle.setAttribute("aria-expanded", String(!open));
   pcBands?.classList.toggle("hidden", open);
+
+  // ensure Plotly in collapsed panel sizes correctly when opening
+  if (open === false) {
+    setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
+  }
 });
 
-// ----- Back button -----
+// ----- Back -----
 pcBack?.addEventListener("click", () => {
   lastRun = null;
-  collapseBands();              // NEW
+  collapseBands();
   showForm();
 });
 
@@ -180,7 +159,7 @@ function showForm() {
   setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
 }
 
-function collapseBands(){
-  if (pcBandsToggle) pcBandsToggle.setAttribute("aria-expanded", "false");
+function collapseBands() {
+  pcBandsToggle?.setAttribute("aria-expanded", "false");
   pcBands?.classList.add("hidden");
 }
