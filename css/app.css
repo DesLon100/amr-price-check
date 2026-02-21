@@ -232,13 +232,12 @@ body{
 }
 .pc-context{
   display:flex;
-  gap:12px;
-  align-items:flex-start;
-  justify-content:space-between;
+  justify-content:flex-end; /* toggle sits right */
   margin-top:10px;
 }
+
 .pc-context-text{
-  flex:1;
+  margin-top:8px;
   font-size:14px;
   line-height:1.35;
 }
