@@ -52,7 +52,7 @@ function quartileAverage(rows, qIndex){
   return band.reduce((a,b)=>a+b,0) / band.length;
 }
 
-// ---- Movement slider (restored) ----
+// ---- Movement slider (CTA panel) ----
 function renderMovement(el, { price, equivNow, captionText = "" }){
   if(!el) return;
 
@@ -110,17 +110,19 @@ function renderMovement(el, { price, equivNow, captionText = "" }){
   if(capEl) capEl.textContent = captionText;
 }
 
-// Helper to pull extra fields defensively (your CSV schema may vary)
-function getHouse(r){ return r.house || r.auctionhouse || r.auction_house || r.salehouse || r.seller || r.h || "—"; }
-function getCity(r){ return r.city || r.location || r.sale_city || r.town || r.c || "—"; }
-function getLot(r){ return r.lot || r.lotno || r.lot_no || r.lotnumber || r.l || "—"; }
-function getUrl(r){ return r.url || r.loturl || r.link || r.href || ""; }
+// --- CSV schema (from your screenshot) ---
+// ArtistID, ArtistName, MonthYYYYMM, ValueGBP, LocationID, LocationCode, AuctionID, LotNo, SaleURL
+function getLocationCode(r){ return (r.LocationCode ?? r.locationCode ?? r.location_code ?? r.location ?? "—"); }
+function getLotNo(r){ return (r.LotNo ?? r.lotNo ?? r.lotno ?? r.lot ?? "—"); }
+function getSaleURL(r){ return (r.SaleURL ?? r.saleURL ?? r.url ?? r.link ?? ""); }
 
 /**
  * Main entry
  * - Always renders scatter
  * - Computes percentile + indicative value when feasible
- * - Provides highlight points for the "ranking window"
+ * - Adds two hidden highlight traces:
+ *    - 24M window ending at purchase month ("then")
+ *    - 24M window ending at latest month ("now")
  */
 export function runPriceCheck({
   workbench,
@@ -140,30 +142,29 @@ export function runPriceCheck({
   const artworkDate = parseYYYYMM(myMonthYYYYMM) || all[all.length-1].date;
   const latestDate  = all[all.length-1].date;
 
-  // Window used for the indicative value (and the highlight)
+  // Windows used by the indicative value (and by highlighting)
   const TRANSPORT_WINDOW_MONTHS = 24;
   const MIN_SALES_IN_WINDOW = 12;
 
-  const nowRowsHighlight = windowN(all, latestDate, TRANSPORT_WINDOW_MONTHS);
+  const thenRowsHighlight = windowN(all, artworkDate, TRANSPORT_WINDOW_MONTHS);
+  const nowRowsHighlight  = windowN(all, latestDate,  TRANSPORT_WINDOW_MONTHS);
 
   // ---- Scatter base + hover ----
   const x = all.map(r=>r.date);
   const y = all.map(r=>r.price);
 
-  // customdata = [house, city, lot, url]
+  // customdata = [LocationCode, LotNo, SaleURL]
   const customdata = all.map(r => [
-    getHouse(r),
-    getCity(r),
-    getLot(r),
-    getUrl(r)
+    getLocationCode(r),
+    getLotNo(r),
+    getSaleURL(r)
   ]);
 
   const hovertemplate =
     "%{x|%b %Y}<br>" +
-    "<b>%{y:,.0f}</b><br>" +
-    "%{customdata[0]} · %{customdata[1]}<br>" +
-    "Lot %{customdata[2]}<br>" +
-    "<extra>Click dot to open lot page</extra>";
+    "<b>£%{y:,.0f}</b><br>" +
+    "%{customdata[0]}<br>" +
+    "Lot %{customdata[1]}<extra>Click to open sale</extra>";
 
   const baseTrace = {
     x, y,
@@ -176,30 +177,38 @@ export function runPriceCheck({
     meta: "pc_base"
   };
 
-  // ---- Highlight trace for "ranking window" (hidden by default; toggled in app.js) ----
-  const hx = nowRowsHighlight.map(r => r.date);
-  const hy = nowRowsHighlight.map(r => r.price);
-  const hcustom = nowRowsHighlight.map(r => [
-    getHouse(r),
-    getCity(r),
-    getLot(r),
-    getUrl(r)
-  ]);
+  // ---- Highlight traces (hidden by default; toggled in app.js) ----
+  // Complementary orange
+  const ORANGE_NOW  = "#f4a261";
+  const ORANGE_THEN = "#f6bd74";
 
-  const highlightTrace = {
-    x: hx,
-    y: hy,
-    customdata: hcustom,
+  const thenTrace = {
+    x: thenRowsHighlight.map(r => r.date),
+    y: thenRowsHighlight.map(r => r.price),
+    customdata: thenRowsHighlight.map(r => [getLocationCode(r), getLotNo(r), getSaleURL(r)]),
     type: "scattergl",
     mode: "markers",
-    marker: { size: 7, color: "#2f3b63", line: { width: 2, color: "#fee7b1" } },
+    marker: { size: 7, color: ORANGE_THEN },
     hovertemplate,
     showlegend: false,
-    visible: false,           // <-- start hidden
+    visible: false,
+    meta: "pc_highlight_then"
+  };
+
+  const nowTrace = {
+    x: nowRowsHighlight.map(r => r.date),
+    y: nowRowsHighlight.map(r => r.price),
+    customdata: nowRowsHighlight.map(r => [getLocationCode(r), getLotNo(r), getSaleURL(r)]),
+    type: "scattergl",
+    mode: "markers",
+    marker: { size: 7, color: ORANGE_NOW },
+    hovertemplate,
+    showlegend: false,
+    visible: false,
     meta: "pc_highlight_now"
   };
 
-  // My Artwork dot (always last for legibility)
+  // My Artwork dot (always last)
   const myArtworkTrace = (Number.isFinite(price) ? {
     x: [artworkDate],
     y: [price],
@@ -216,8 +225,8 @@ export function runPriceCheck({
   } : null);
 
   const traces = myArtworkTrace
-    ? [baseTrace, highlightTrace, myArtworkTrace]
-    : [baseTrace, highlightTrace];
+    ? [baseTrace, thenTrace, nowTrace, myArtworkTrace]
+    : [baseTrace, thenTrace, nowTrace];
 
   Plotly.newPlot(elChart, traces, {
     margin: { l: 56, r: 18, t: 26, b: 48 },
