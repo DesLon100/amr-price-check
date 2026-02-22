@@ -52,11 +52,10 @@ function quartileAverage(rows, qIndex){
   return band.reduce((a,b)=>a+b,0) / band.length;
 }
 
-// Slider-style movement chart (restored, but no clearing-bands framing)
+// ---- Movement slider (restored) ----
 function renderMovement(el, { price, equivNow, captionText = "" }){
   if(!el) return;
 
-  // If we don't have an equivNow, don't plot junk
   if(!Number.isFinite(price) || !Number.isFinite(equivNow)){
     el.innerHTML = "";
     return;
@@ -68,7 +67,6 @@ function renderMovement(el, { price, equivNow, captionText = "" }){
   const range = [Math.max(0, xmin - pad), xmax + pad];
 
   Plotly.newPlot(el, [
-    // light rail
     {
       x: [range[0], range[1]], y: [0,0],
       mode: "lines",
@@ -76,7 +74,6 @@ function renderMovement(el, { price, equivNow, captionText = "" }){
       hoverinfo: "skip",
       showlegend: false
     },
-    // My Artwork marker (input price)
     {
       x: [price], y: [0],
       mode: "markers",
@@ -85,7 +82,6 @@ function renderMovement(el, { price, equivNow, captionText = "" }){
       hoverinfo: "text",
       showlegend: false
     },
-    // Indicative value today marker (equivNow)
     {
       x: [equivNow], y: [0],
       mode: "markers",
@@ -114,11 +110,17 @@ function renderMovement(el, { price, equivNow, captionText = "" }){
   if(capEl) capEl.textContent = captionText;
 }
 
+// Helper to pull extra fields defensively (your CSV schema may vary)
+function getHouse(r){ return r.house || r.auctionhouse || r.auction_house || r.salehouse || r.seller || r.h || "—"; }
+function getCity(r){ return r.city || r.location || r.sale_city || r.town || r.c || "—"; }
+function getLot(r){ return r.lot || r.lotno || r.lot_no || r.lotnumber || r.l || "—"; }
+function getUrl(r){ return r.url || r.loturl || r.link || r.href || ""; }
+
 /**
  * Main entry
  * - Always renders scatter
- * - Computes percentile + "equivalent level today" when feasible
- * - Never throws for window insufficiency
+ * - Computes percentile + indicative value when feasible
+ * - Provides highlight points for the "ranking window"
  */
 export function runPriceCheck({
   workbench,
@@ -138,20 +140,66 @@ export function runPriceCheck({
   const artworkDate = parseYYYYMM(myMonthYYYYMM) || all[all.length-1].date;
   const latestDate  = all[all.length-1].date;
 
-  // --- Always render scatter ---
+  // Window used for the indicative value (and the highlight)
+  const TRANSPORT_WINDOW_MONTHS = 24;
+  const MIN_SALES_IN_WINDOW = 12;
+
+  const nowRowsHighlight = windowN(all, latestDate, TRANSPORT_WINDOW_MONTHS);
+
+  // ---- Scatter base + hover ----
   const x = all.map(r=>r.date);
   const y = all.map(r=>r.price);
 
+  // customdata = [house, city, lot, url]
+  const customdata = all.map(r => [
+    getHouse(r),
+    getCity(r),
+    getLot(r),
+    getUrl(r)
+  ]);
+
+  const hovertemplate =
+    "%{x|%b %Y}<br>" +
+    "<b>%{y:,.0f}</b><br>" +
+    "%{customdata[0]} · %{customdata[1]}<br>" +
+    "Lot %{customdata[2]}<br>" +
+    "<extra>Click dot to open lot page</extra>";
+
   const baseTrace = {
     x, y,
+    customdata,
     type: "scattergl",
     mode: "markers",
     marker: { size: 6, color: "#2f3b63" },
-    hovertemplate: "%{x|%b %Y}<br>%{y:,.0f}<extra></extra>",
-    showlegend: false
+    hovertemplate,
+    showlegend: false,
+    meta: "pc_base"
   };
 
-  // My Artwork dot as separate trace, plotted LAST
+  // ---- Highlight trace for "ranking window" (hidden by default; toggled in app.js) ----
+  const hx = nowRowsHighlight.map(r => r.date);
+  const hy = nowRowsHighlight.map(r => r.price);
+  const hcustom = nowRowsHighlight.map(r => [
+    getHouse(r),
+    getCity(r),
+    getLot(r),
+    getUrl(r)
+  ]);
+
+  const highlightTrace = {
+    x: hx,
+    y: hy,
+    customdata: hcustom,
+    type: "scattergl",
+    mode: "markers",
+    marker: { size: 7, color: "#2f3b63", line: { width: 2, color: "#fee7b1" } },
+    hovertemplate,
+    showlegend: false,
+    visible: false,           // <-- start hidden
+    meta: "pc_highlight_now"
+  };
+
+  // My Artwork dot (always last for legibility)
   const myArtworkTrace = (Number.isFinite(price) ? {
     x: [artworkDate],
     y: [price],
@@ -162,11 +210,14 @@ export function runPriceCheck({
       color: "#fee7b1",
       line: { width: 3, color: "#2c3a5c" }
     },
-    hovertemplate: `My Artwork<br>%{x|%b %Y}<br>${fmtGBP(price)}<extra></extra>`,
-    showlegend: false
+    hovertemplate: `My Artwork<br>%{x|%b %Y}<br><b>${fmtGBP(price)}</b><extra></extra>`,
+    showlegend: false,
+    meta: "pc_myartwork"
   } : null);
 
-  const traces = myArtworkTrace ? [baseTrace, myArtworkTrace] : [baseTrace];
+  const traces = myArtworkTrace
+    ? [baseTrace, highlightTrace, myArtworkTrace]
+    : [baseTrace, highlightTrace];
 
   Plotly.newPlot(elChart, traces, {
     margin: { l: 56, r: 18, t: 26, b: 48 },
@@ -176,14 +227,10 @@ export function runPriceCheck({
     plot_bgcolor: "rgba(0,0,0,0)"
   }, { responsive: true, displayModeBar: false });
 
-  // --- Stats (non-blocking) ---
+  // ---- Stats (non-blocking) ----
   const thenUniverse = all.filter(r => r.date <= artworkDate);
   const thenPricesAll = thenUniverse.map(r=>r.price).sort((a,b)=>a-b);
   const pct = percentileRank(thenPricesAll, price);
-
-  // Transport-style "indicative value today"
-  const TRANSPORT_WINDOW_MONTHS = 24;
-  const MIN_SALES_IN_WINDOW = 12;
 
   let equivNow = null;
 
@@ -213,7 +260,7 @@ export function runPriceCheck({
     equivNow = null;
   }
 
-  // Render movement slider if possible; otherwise leave it empty
+  // ---- Movement slider rendering ----
   const moveEl = document.getElementById("pc-move-chart");
   if(moveEl){
     if(Number.isFinite(equivNow)){
