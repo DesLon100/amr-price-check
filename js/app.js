@@ -134,10 +134,11 @@ function bindGraphClickOnce(gd) {
   gd.on("plotly_click", (ev) => {
     const p = ev?.points?.[0];
     const url = String(p?.customdata?.[2] ?? "").trim();
+
     if (!url || !url.startsWith("http")) return;
 
-    const w = window.open(url, "_blank", "noopener,noreferrer");
-    if (!w) window.location.href = url;
+    // Always open in new TAB
+    window.open(url, "_blank");
   });
 }
 
