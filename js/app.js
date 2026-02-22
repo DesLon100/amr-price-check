@@ -127,17 +127,29 @@ function bindGraphClickOnce(gd) {
   gd.__pcClickBound = true;
 
   gd.on("plotly_click", (ev) => {
-    const p = ev?.points?.[0];
-    let url =
-      p?.customdata?.[2] ??
-      (Number.isInteger(p?.pointIndex) && p?.data?.customdata?.[p.pointIndex]?.[2]);
+  const p = ev?.points?.[0];
 
-    url = String(url || "").trim();
-    if (!url || !url.startsWith("http")) return;
-
-    const w = window.open(url, "_blank", "noopener,noreferrer");
-    if (!w) window.location.href = url; // popup blocked fallback
+  console.log("CLICK fired", {
+    traceMeta: p?.data?.meta,
+    pointIndex: p?.pointIndex,
+    customdata: p?.customdata,
   });
+
+  let url =
+    p?.customdata?.[2] ??
+    (Number.isInteger(p?.pointIndex) && p?.data?.customdata?.[p.pointIndex]?.[2]);
+
+  url = String(url || "").trim();
+  console.log("URL resolved:", url);
+
+  if (!url || !url.startsWith("http")) {
+    alert("No SaleURL found for this point.");
+    return;
+  }
+
+  const w = window.open(url, "_blank", "noopener,noreferrer");
+  if (!w) window.location.href = url; // popup blocked fallback
+});
 }
 
 // Load CSV
