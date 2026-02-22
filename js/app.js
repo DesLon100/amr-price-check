@@ -25,7 +25,11 @@ function fmtYYYYMMLabel(yyyymm) {
   const m = Number(t.slice(4, 6)) - 1;
   if (!(y >= 1900 && m >= 0 && m <= 11)) return "";
   const d = new Date(Date.UTC(y, m, 1));
-  return d.toLocaleString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
+  return d.toLocaleString("en-GB", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 // Top bar
@@ -48,6 +52,10 @@ const pcBack = el("pc-back");
 const pcContextText = el("pc-context-text");
 const pcMove = el("pc-move");
 const pcMoveToggle = el("pc-move-toggle");
+
+// Stable sale link (under chart)
+const pcSaleLinkWrap = el("pc-sale-link-wrap");
+const pcSaleLink = el("pc-sale-link");
 
 let lastRun = null;
 
@@ -86,6 +94,7 @@ function setFMVContextCopy() {
 function showForm() {
   pcFormCard?.classList.remove("hidden");
   pcResults?.classList.add("hidden");
+  hideStableSaleLink();
   setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
 }
 
@@ -96,11 +105,27 @@ function showResults() {
   setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
 }
 
-// Click-through: click any dot -> open SaleURL
-function bindLotClickOnce() {
-  if (!pcUniverse || pcUniverse.__pcLotClickBound) return;
-  pcUniverse.__pcLotClickBound = true;
+// --- Stable sale link helpers ---
+function hideStableSaleLink() {
+  if (pcSaleLinkWrap) pcSaleLinkWrap.classList.add("hidden");
+  if (pcSaleLink) pcSaleLink.href = "#";
+}
+function showStableSaleLink(url) {
+  if (!pcSaleLinkWrap || !pcSaleLink) return;
+  if (url && typeof url === "string") {
+    pcSaleLink.href = url;
+    pcSaleLinkWrap.classList.remove("hidden");
+  } else {
+    hideStableSaleLink();
+  }
+}
 
+// --- Interactivity: click dot opens sale; hover updates stable link ---
+function bindLotInteractivityOnce() {
+  if (!pcUniverse || pcUniverse.__pcLotInteractivityBound) return;
+  pcUniverse.__pcLotInteractivityBound = true;
+
+  // Click a dot -> open SaleURL immediately
   pcUniverse.on("plotly_click", (ev) => {
     const p = ev?.points?.[0];
     const url = p?.customdata?.[2]; // [House (City), LotNo, SaleURL]
@@ -108,7 +133,19 @@ function bindLotClickOnce() {
       window.open(url, "_blank", "noopener,noreferrer");
     }
   });
-} // ✅ THIS BRACE WAS MISSING IN YOUR FILE
+
+  // Hover a dot -> show stable link under chart
+  pcUniverse.on("plotly_hover", (ev) => {
+    const p = ev?.points?.[0];
+    const url = p?.customdata?.[2];
+    showStableSaleLink(url);
+  });
+
+  // Unhover -> hide stable link
+  pcUniverse.on("plotly_unhover", () => {
+    hideStableSaleLink();
+  });
+}
 
 // Highlight toggle (both windows)
 function setRankingHighlight(isOn) {
@@ -149,7 +186,10 @@ file?.addEventListener("change", async (e) => {
       pcArtist.innerHTML =
         `<option value="">Select artist…</option>` +
         data.artists
-          .map((a) => `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`)
+          .map(
+            (a) =>
+              `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`
+          )
           .join("");
       pcArtist.disabled = false;
       if (data.artists[0]) pcArtist.value = data.artists[0].id;
@@ -157,8 +197,11 @@ file?.addEventListener("change", async (e) => {
 
     if (pcRun) pcRun.disabled = false;
 
+    // Reset view/state
     lastRun = null;
     if (pcLogToggle) pcLogToggle.checked = false;
+
+    hideStableSaleLink();
     collapseMovePanel();
     resetHero();
     setFMVContextCopy();
@@ -174,6 +217,7 @@ file?.addEventListener("change", async (e) => {
     if (pcRun) pcRun.disabled = true;
 
     lastRun = null;
+    hideStableSaleLink();
     collapseMovePanel();
     resetHero();
     showForm();
@@ -209,7 +253,8 @@ function doRun({ scroll = true } = {}) {
     elChart: pcUniverse,
   });
 
-  bindLotClickOnce();
+  // Interactivity for click/hover (once)
+  bindLotInteractivityOnce();
 
   lastRun = { artistId, price, myMonthYYYYMM: myMonth };
 
@@ -217,21 +262,28 @@ function doRun({ scroll = true } = {}) {
   setHeroForResults({ artistName, price, purchaseMonth: myMonth });
 
   setFMVContextCopy();
+  hideStableSaleLink();
   collapseMovePanel();
 
   if (scroll) showResults();
 }
 
 pcRun?.addEventListener("click", () => {
-  try { doRun({ scroll: true }); }
-  catch (err) { alert(err?.message || String(err)); }
+  try {
+    doRun({ scroll: true });
+  } catch (err) {
+    alert(err?.message || String(err));
+  }
 });
 
 // Re-run on log toggle
 pcLogToggle?.addEventListener("change", () => {
   if (!lastRun) return;
-  try { doRun({ scroll: false }); }
-  catch (err) { alert(err?.message || String(err)); }
+  try {
+    doRun({ scroll: false });
+  } catch (err) {
+    alert(err?.message || String(err));
+  }
 });
 
 // Movement toggle (CTA)
@@ -252,6 +304,7 @@ pcMoveToggle?.addEventListener("click", () => {
 // Back
 pcBack?.addEventListener("click", () => {
   lastRun = null;
+  hideStableSaleLink();
   collapseMovePanel();
   resetHero();
   showForm();
