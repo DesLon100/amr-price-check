@@ -197,16 +197,25 @@ pcRun?.addEventListener("click", () => {
 // ----- Toggle y-scale (re-run to redraw) -----
 pcLogToggle?.addEventListener("change", () => {
   if (!lastRun) return;
-  try {
-    doRun({ scroll: false });
-  } catch (err) {
-    alert(err?.message || String(err));
-  }
-});
-
-// ----- Back -----
-pcBack?.addEventListener("click", () => {
-  lastRun = null;
-  resetHero();
-  showForm();
+-  setPriceCheckScale(pcUniverse, pcLogToggle.checked ? "log" : "linear");
++  // Re-run to redraw with new y scale
++  const data = window.__pcData;
++  if (!data) return;
++  const wbLite = {
++    getLotRows: () => data.lotRows,
++    getArtistName: (id) => data.getArtistName(id),
++    getMetrics: (_id) => null,
++  };
++  try {
++    runPriceCheck({
++      workbench: wbLite,
++      artistId: lastRun.artistId,
++      price: lastRun.price,
++      myMonthYYYYMM: lastRun.myMonthYYYYMM,
++      yScale: pcLogToggle.checked ? "log" : "linear",
++      elChart: pcUniverse,
++    });
++  } catch (err) {
++    alert(err?.message || String(err));
++  }
 });
