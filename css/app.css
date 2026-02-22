@@ -325,13 +325,25 @@ body{
   gap:10px;
 }
 
+
+/* --- HERO TITLE + DOT --- */
+.hero-title{
+  display:flex;
+  align-items:baseline;     /* aligns dot to text baseline area */
+  gap:10px;
+}
+
+/* The dot itself */
 .hero-dot{
-  width:14px;
-  height:14px;
+  width:16px;               /* ~15% bigger than 14px */
+  height:16px;
   border-radius:999px;
-  background:#fee7b1;              /* same fill as My Artwork dot */
-  border:3px solid #111;            /* or #2c3a5c to match chart ring */
-  border-color:#2c3a5c;
+  background:#fee7b1;
+  border:3px solid #2c3a5c; /* match chart ring */
   box-sizing:border-box;
+
+  /* Nudge down slightly so it sits on the text midline */
+  position:relative;
+  top:0.08em;
   flex:0 0 auto;
 }
