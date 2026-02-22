@@ -44,6 +44,19 @@ const pcUniverse = el("pc-universe");
 const pcLogToggle = el("pc-log");
 const pcBack = el("pc-back");
 
+function bindLotClickOnce() {
+  if (!pcUniverse || pcUniverse.__pcLotClickBound) return;
+  pcUniverse.__pcLotClickBound = true;
+
+  pcUniverse.on("plotly_click", (ev) => {
+    const p = ev?.points?.[0];
+    const url = p?.customdata?.[3];
+    if (url && typeof url === "string") {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  });
+}
+
 // Context + movement panel
 const pcContextText = el("pc-context-text");
 const pcMove = el("pc-move");
