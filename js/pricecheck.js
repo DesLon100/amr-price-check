@@ -277,6 +277,7 @@ function quartileAverage(rows, qIndex){
 
 // ------------------------------------------------------------
 // NEW: Month-capped weighting helpers for percentile transport
+// (kept for compatibility, no longer used by transport method)
 // ------------------------------------------------------------
 function monthKeyUTC(d){
   const y = d.getUTCFullYear();
@@ -367,6 +368,55 @@ function weightedQuantile(rowsW, q){
   return xs[xs.length - 1].x;
 }
 
+// ------------------------------------------------------------
+// NEW: helpers for 24M rolling p50 + regression transport
+// ------------------------------------------------------------
+function monthStartUTC(d){
+  if(!(d instanceof Date)) return null;
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+}
+
+function monthIndexUTC(d){
+  // Unique month integer: y*12 + m (0-based month)
+  return d.getUTCFullYear() * 12 + d.getUTCMonth();
+}
+
+function monthFromIndexUTC(idx){
+  const y = Math.floor(idx / 12);
+  const m = idx - y * 12;
+  return new Date(Date.UTC(y, m, 1));
+}
+
+function buildMonthRangeUTC(minDate, maxDate){
+  const a = monthIndexUTC(monthStartUTC(minDate));
+  const b = monthIndexUTC(monthStartUTC(maxDate));
+  const months = [];
+  for(let i = a; i <= b; i++){
+    months.push(monthFromIndexUTC(i));
+  }
+  return months;
+}
+
+function ols(xs, ys){
+  // Returns {a, b} for y = a + b*x
+  const n = xs.length;
+  if(n < 2) return null;
+
+  let sx = 0, sy = 0, sxx = 0, sxy = 0;
+  for(let i=0;i<n;i++){
+    const x = xs[i], y = ys[i];
+    sx += x; sy += y;
+    sxx += x * x;
+    sxy += x * y;
+  }
+  const denom = (n * sxx - sx * sx);
+  if(denom === 0) return null;
+
+  const b = (n * sxy - sx * sy) / denom;
+  const a = (sy - b * sx) / n;
+  return { a, b };
+}
+
 // Movement slider (CTA)
 function renderMovement(el, { price, equivNow, captionText = "" }){
   if(!el) return;
@@ -425,7 +475,7 @@ export function runPriceCheck({
   const latestDate  = all[all.length-1].date;
 
   const TRANSPORT_WINDOW_MONTHS = 24;
-  const MIN_SALES_IN_WINDOW = 12;
+  const MIN_SALES_IN_WINDOW = 30; // per your spec
 
   const thenRowsHighlight = windowN(all, artworkDate, TRANSPORT_WINDOW_MONTHS);
   const nowRowsHighlight  = windowN(all, latestDate,  TRANSPORT_WINDOW_MONTHS);
@@ -493,8 +543,148 @@ export function runPriceCheck({
     meta:"pc_highlight_now"
   };
 
+  // ------------------------------------------------------------
+  // NEW: 24M rolling p50 + regression line + optional "my percentile" line
+  // (kept visually minimal; no legend)
+  // ------------------------------------------------------------
+  const months = buildMonthRangeUTC(all[0].date, all[all.length-1].date);
+
+  // Precompute month-start for each row to make 24M windows stable
+  const allM = all.map(r => ({
+    ...r,
+    _m: monthStartUTC(r.date)
+  }));
+
+  // Two pointers over month-sorted rows
+  let startPtr = 0;
+  let endPtr = 0;
+
+  const p50Dates = [];
+  const p50Vals = [];
+  const p50T = []; // month index (0..)
+  const monthToT = new Map(); // key yyyy-mm -> t
+
+  // Build rolling p50 series
+  for(let i=0;i<months.length;i++){
+    const endMonth = months[i];
+    const startMonth = addMonthsUTC(endMonth, -(TRANSPORT_WINDOW_MONTHS - 1));
+
+    // advance endPtr: include rows with month <= endMonth
+    while(endPtr < allM.length && allM[endPtr]._m <= endMonth) endPtr++;
+    // advance startPtr: exclude rows with month < startMonth
+    while(startPtr < allM.length && allM[startPtr]._m < startMonth) startPtr++;
+
+    const win = allM.slice(startPtr, endPtr);
+    if(win.length < MIN_SALES_IN_WINDOW) continue;
+
+    const prices = win.map(r=>r.price).filter(Number.isFinite).sort((a,b)=>a-b);
+    if(prices.length < MIN_SALES_IN_WINDOW) continue;
+
+    const med = quantile(prices, 0.5);
+    if(!Number.isFinite(med) || med <= 0) continue;
+
+    p50Dates.push(endMonth);
+    p50Vals.push(med);
+    p50T.push(i);
+
+    // stable key for lookup later
+    monthToT.set(monthKeyUTC(endMonth), i);
+  }
+
+  // Regression through ln(p50) = a + b*t
+  let reg = null;
+  if(p50T.length >= 2){
+    const ys = p50Vals.map(v => Math.log(v));
+    reg = ols(p50T, ys);
+  }
+
+  // Build regression line over the full month span (only if reg exists)
+  const regDates = [];
+  const regVals = [];
+  if(reg){
+    for(let i=0;i<months.length;i++){
+      const ln = reg.a + reg.b * i;
+      const v = Math.exp(ln);
+      if(Number.isFinite(v) && v > 0){
+        regDates.push(months[i]);
+        regVals.push(v);
+      }
+    }
+  }
+
+  // Compute "my percentile at purchase" inside purchase 24M window
+  // and build rolling 24M quantile line at that percentile (optional toggle)
+  const purchaseMonth = monthStartUTC(artworkDate);
+  const thenWin = windowN(all, purchaseMonth, TRANSPORT_WINDOW_MONTHS);
+  const thenPricesWin = thenWin.map(r=>r.price).filter(Number.isFinite).sort((a,b)=>a-b);
+  const q0 = (thenPricesWin.length >= MIN_SALES_IN_WINDOW && Number.isFinite(price))
+    ? (percentileRank(thenPricesWin, price) / 100)
+    : NaN;
+
+  // Build rolling quantile line at q0 (only if q0 finite)
+  const qDates = [];
+  const qVals = [];
+  if(Number.isFinite(q0)){
+    // recompute pointers to avoid carrying state from p50 loop
+    startPtr = 0;
+    endPtr = 0;
+    for(let i=0;i<months.length;i++){
+      const endMonth = months[i];
+      const startMonth = addMonthsUTC(endMonth, -(TRANSPORT_WINDOW_MONTHS - 1));
+
+      while(endPtr < allM.length && allM[endPtr]._m <= endMonth) endPtr++;
+      while(startPtr < allM.length && allM[startPtr]._m < startMonth) startPtr++;
+
+      const win = allM.slice(startPtr, endPtr);
+      if(win.length < MIN_SALES_IN_WINDOW) continue;
+
+      const prices = win.map(r=>r.price).filter(Number.isFinite).sort((a,b)=>a-b);
+      if(prices.length < MIN_SALES_IN_WINDOW) continue;
+
+      const v = quantile(prices, q0);
+      if(Number.isFinite(v) && v > 0){
+        qDates.push(endMonth);
+        qVals.push(v);
+      }
+    }
+  }
+
+  const p50Trace = (p50Dates.length >= 2) ? {
+    x: p50Dates,
+    y: p50Vals,
+    type:"scatter",
+    mode:"lines",
+    line:{width:1.5, color:"rgba(47,59,99,0.40)"},
+    hovertemplate:"24M rolling median (p50)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
+    showlegend:false,
+    meta:"pc_p50_24"
+  } : null;
+
+  const regTrace = (regDates.length >= 2) ? {
+    x: regDates,
+    y: regVals,
+    type:"scatter",
+    mode:"lines",
+    line:{width:3, color:"rgba(47,59,99,0.85)"},
+    hovertemplate:"Trend line (regression through rolling p50)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
+    showlegend:false,
+    meta:"pc_p50_reg"
+  } : null;
+
+  const myPctTrace = (qDates.length >= 2) ? {
+    x: qDates,
+    y: qVals,
+    type:"scatter",
+    mode:"lines",
+    line:{width:2, dash:"dot", color:"rgba(246,189,116,0.95)"},
+    hovertemplate:"My percentile (24M rolling)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
+    showlegend:false,
+    visible:false, // toggled by checkbox if present
+    meta:"pc_mypercentile_24"
+  } : null;
+
   const myArtworkTrace = Number.isFinite(price) ? {
-    x:[artworkDate],
+    x:[purchaseMonth],
     y:[price],
     type:"scattergl",
     mode:"markers",
@@ -504,9 +694,16 @@ export function runPriceCheck({
     meta:"pc_myartwork"
   } : null;
 
-  const traces = myArtworkTrace
-    ? [baseTrace, thenTrace, nowTrace, myArtworkTrace]
-    : [baseTrace, thenTrace, nowTrace];
+  // Assemble traces (keep your original order as much as possible)
+  const traces = [];
+  traces.push(baseTrace, thenTrace, nowTrace);
+
+  // Lines behind the “My Artwork” marker but above scatter (so they’re readable)
+  if(p50Trace) traces.push(p50Trace);
+  if(regTrace) traces.push(regTrace);
+  if(myPctTrace) traces.push(myPctTrace);
+
+  if(myArtworkTrace) traces.push(myArtworkTrace);
 
   const plotPromise = Plotly.newPlot(elChart, traces, {
     margin:{l:56,r:18,t:26,b:48},
@@ -525,45 +722,60 @@ export function runPriceCheck({
   const pct = percentileRank(thenPricesAll, price);
 
   // ------------------------------------------------------------
-  // NEW: Month-capped weighted percentile transport
-  // - build then/now windows
-  // - apply month-cap weights inside each window
-  // - compute weighted percentile of your price in THEN window
-  // - map that percentile into NOW window via weighted quantile
-  // - keep your conservative cap vs the input price
+  // NEW: Percentile transport replacement
+  // Method:
+  // 1) compute rolling 24M p50 series
+  // 2) run regression through ln(p50)
+  // 3) revalue input price by ratio of regression values between
+  //    purchase month and latest month
   // ------------------------------------------------------------
   let equivNow = null;
 
   try{
-    const thenRows = windowN(all, artworkDate, TRANSPORT_WINDOW_MONTHS);
-    const nowRows  = windowN(all, latestDate,  TRANSPORT_WINDOW_MONTHS);
+    if(reg && Number.isFinite(price) && price > 0){
+      const t0 = monthToT.get(monthKeyUTC(purchaseMonth));
+      const t1 = monthToT.get(monthKeyUTC(monthStartUTC(latestDate)));
 
-    if(thenRows.length >= MIN_SALES_IN_WINDOW && nowRows.length >= MIN_SALES_IN_WINDOW){
-      const thenW = applyMonthCapWeights(thenRows);
-      const nowW  = applyMonthCapWeights(nowRows);
+      // Only proceed if purchase + latest months are inside our month range
+      if(Number.isFinite(t0) && Number.isFinite(t1)){
+        // Require enough sales in the 24M window at both endpoints (>=30)
+        const win0 = windowN(all, purchaseMonth, TRANSPORT_WINDOW_MONTHS);
+        const win1 = windowN(all, monthStartUTC(latestDate), TRANSPORT_WINDOW_MONTHS);
 
-      const pThen = weightedPercentileRank(thenW, price); // 0..100
+        if(win0.length >= MIN_SALES_IN_WINDOW && win1.length >= MIN_SALES_IN_WINDOW){
+          const p0 = Math.exp(reg.a + reg.b * t0);
+          const p1 = Math.exp(reg.a + reg.b * t1);
 
-      if(Number.isFinite(pThen)){
-        const mappedNow = weightedQuantile(nowW, pThen / 100);
-
-        if(Number.isFinite(mappedNow) && mappedNow > 0){
-          // Conservative cap (keep your existing behaviour)
-          let factor = (mappedNow - price) / price;
-
-          const yearsElapsed = Math.max(1, (latestDate - artworkDate) / (365*24*60*60*1000));
-          const maxMove = Math.min(0.25, 0.05 * yearsElapsed);
-
-          if(factor >  maxMove) factor =  maxMove;
-          if(factor < -maxMove) factor = -maxMove;
-
-          equivNow = price * (1 + factor);
+          if(Number.isFinite(p0) && Number.isFinite(p1) && p0 > 0 && p1 > 0){
+            equivNow = price * (p1 / p0);
+          }
         }
       }
     }
   } catch(e){
     equivNow = null;
   }
+
+  // Toggle for the optional “my percentile” rolling line (if the checkbox exists)
+  // Expected checkbox id: pc-show-mypercentile
+  // (If it doesn’t exist, nothing breaks.)
+  plotPromise.then(() => {
+    const cb = document.getElementById("pc-show-mypercentile");
+    if(!cb) return;
+
+    const setVis = () => {
+      // Find the trace index by meta (stable even if trace order changes)
+      const gd = elChart;
+      const data = (gd && gd.data) ? gd.data : [];
+      const idx = data.findIndex(t => t && t.meta === "pc_mypercentile_24");
+      if(idx < 0) return;
+      Plotly.restyle(gd, { visible: cb.checked ? true : false }, [idx]);
+    };
+
+    cb.removeEventListener("change", setVis);
+    cb.addEventListener("change", setVis);
+    setVis();
+  });
 
   const moveEl = document.getElementById("pc-move-chart");
   if(moveEl){
@@ -572,8 +784,9 @@ export function runPriceCheck({
         price,
         equivNow,
         captionText:
-          "Indicative value today is estimated by re-ranking your price against the artist’s most recent 24 months of auction sales, " +
-          "with months capped so unusually high-sale months do not dominate the distribution."
+          "Indicative value today is estimated by tracking the artist’s typical market level: " +
+          "we calculate a 24-month rolling median (p50), fit a trend line through it, " +
+          "then revalue your purchase price by the change in that trend between your purchase month and today."
       });
     } else {
       moveEl.innerHTML = "";
