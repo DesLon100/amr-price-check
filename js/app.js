@@ -59,9 +59,9 @@ const pcSaleLink = el("pc-sale-link");
 
 // Hero
 const heroTitle = document.querySelector(".hero-title");
-const heroTitleTextEl = document.querySelector(".hero-title-text"); // NEW (if you added span)
+const heroTitleTextEl = document.querySelector(".hero-title-text");
 const heroSub = document.querySelector(".hero-sub");
-const heroDot = el("hero-dot"); // NEW (the small dot next to title)
+const heroDot = el("hero-dot");
 
 const defaultHeroTitle = heroTitleTextEl
   ? heroTitleTextEl.textContent
@@ -72,18 +72,14 @@ let lastRun = null;
 
 // ----- Hero helpers -----
 function setHeroForResults({ artistName, price, purchaseMonth }) {
-  // Title text
   if (heroTitleTextEl) heroTitleTextEl.textContent = "My Artwork";
-  else if (heroTitle) heroTitle.textContent = "My Artwork"; // fallback if you didn't add span
+  else if (heroTitle) heroTitle.textContent = "My Artwork";
 
-  // Show dot
   heroDot?.classList.remove("hidden");
 
-  // Subtitle line
   const parts = [artistName, fmtGBP0(price)];
   const monthLabel = fmtYYYYMMLabel(purchaseMonth);
   if (monthLabel) parts.push(monthLabel);
-
   if (heroSub) heroSub.textContent = parts.join(" · ");
 }
 
@@ -92,11 +88,10 @@ function resetHero() {
   else if (heroTitle) heroTitle.textContent = defaultHeroTitle;
 
   heroDot?.classList.add("hidden");
-
   if (heroSub) heroSub.textContent = defaultHeroSub;
 }
 
-// Context copy
+// ----- Context copy -----
 function setFMVContextCopy() {
   if (!pcContextText) return;
   pcContextText.textContent =
@@ -105,7 +100,7 @@ function setFMVContextCopy() {
     "if more works sell above it, fair market value has likely decreased.";
 }
 
-// View helpers
+// ----- View helpers -----
 function showForm() {
   pcFormCard?.classList.remove("hidden");
   pcResults?.classList.add("hidden");
@@ -120,14 +115,15 @@ function showResults() {
   setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
 }
 
-// --- Stable sale link helpers ---
+// ----- Stable sale link helpers -----
 function hideStableSaleLink() {
   if (pcSaleLinkWrap) pcSaleLinkWrap.classList.add("hidden");
   if (pcSaleLink) pcSaleLink.href = "#";
 }
+
 function showStableSaleLink(url) {
   if (!pcSaleLinkWrap || !pcSaleLink) return;
-  if (url && typeof url === "string") {
+  if (url && typeof url === "string" && url.startsWith("http")) {
     pcSaleLink.href = url;
     pcSaleLinkWrap.classList.remove("hidden");
   } else {
@@ -135,34 +131,50 @@ function showStableSaleLink(url) {
   }
 }
 
-// --- Interactivity: click dot opens sale; hover updates stable link ---
+// ----- Plotly interactivity -----
+// IMPORTANT: Plotly events bind to the graph div after Plotly.newPlot has run.
+// We bind once per page load and keep updating the stable link on hover.
 function bindLotInteractivityOnce() {
-  if (!pcUniverse || pcUniverse.__pcLotInteractivityBound) return;
-  pcUniverse.__pcLotInteractivityBound = true;
+  if (!pcUniverse) return;
+
+  // Plotly attaches event methods to the graph div.
+  // We re-fetch the graph div after plotting, to be safe.
+  const gd = pcUniverse; // graph div
+
+  if (gd.__pcLotInteractivityBound) return;
+  gd.__pcLotInteractivityBound = true;
 
   // Click a dot -> open SaleURL immediately
-  pcUniverse.on("plotly_click", (ev) => {
+  gd.on("plotly_click", (ev) => {
     const p = ev?.points?.[0];
     const url = p?.customdata?.[2]; // [House (City), LotNo, SaleURL]
-    if (url && typeof url === "string") {
+    if (url && typeof url === "string" && url.startsWith("http")) {
       window.open(url, "_blank", "noopener,noreferrer");
     }
   });
 
   // Hover a dot -> show stable link under chart
-  pcUniverse.on("plotly_hover", (ev) => {
+  gd.on("plotly_hover", (ev) => {
     const p = ev?.points?.[0];
     const url = p?.customdata?.[2];
     showStableSaleLink(url);
   });
 
   // Unhover -> hide stable link
-  pcUniverse.on("plotly_unhover", () => {
+  gd.on("plotly_unhover", () => {
     hideStableSaleLink();
+  });
+
+  // Also: if user clicks the stable link area, it will work regardless
+  pcSaleLink?.addEventListener("click", (e) => {
+    const href = pcSaleLink.getAttribute("href") || "";
+    if (!href || href === "#") {
+      e.preventDefault();
+    }
   });
 }
 
-// Highlight toggle (both windows)
+// ----- Highlight toggle (both windows) -----
 function setRankingHighlight(isOn) {
   if (!pcUniverse?.data) return;
 
@@ -181,7 +193,7 @@ function collapseMovePanel() {
   setRankingHighlight(false);
 }
 
-// Load CSV
+// ----- Load CSV -----
 file?.addEventListener("change", async (e) => {
   const f = e.target.files?.[0];
   if (!f) return;
@@ -201,10 +213,7 @@ file?.addEventListener("change", async (e) => {
       pcArtist.innerHTML =
         `<option value="">Select artist…</option>` +
         data.artists
-          .map(
-            (a) =>
-              `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`
-          )
+          .map((a) => `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`)
           .join("");
       pcArtist.disabled = false;
       if (data.artists[0]) pcArtist.value = data.artists[0].id;
@@ -212,7 +221,6 @@ file?.addEventListener("change", async (e) => {
 
     if (pcRun) pcRun.disabled = false;
 
-    // Reset view/state
     lastRun = null;
     if (pcLogToggle) pcLogToggle.checked = false;
 
@@ -239,7 +247,7 @@ file?.addEventListener("change", async (e) => {
   }
 });
 
-// Run
+// ----- Run -----
 function doRun({ scroll = true } = {}) {
   const artistId = pcArtist?.value || "";
   const price = Number(pcPrice?.value);
@@ -268,7 +276,7 @@ function doRun({ scroll = true } = {}) {
     elChart: pcUniverse,
   });
 
-  // Interactivity for click/hover (once)
+  // Bind after plotting
   bindLotInteractivityOnce();
 
   lastRun = { artistId, price, myMonthYYYYMM: myMonth };
@@ -277,28 +285,22 @@ function doRun({ scroll = true } = {}) {
   setHeroForResults({ artistName, price, purchaseMonth: myMonth });
 
   setFMVContextCopy();
-  hideStableSaleLink();
+  hideStableSaleLink();   // will reappear on hover
   collapseMovePanel();
 
   if (scroll) showResults();
 }
 
 pcRun?.addEventListener("click", () => {
-  try {
-    doRun({ scroll: true });
-  } catch (err) {
-    alert(err?.message || String(err));
-  }
+  try { doRun({ scroll: true }); }
+  catch (err) { alert(err?.message || String(err)); }
 });
 
-// Re-run on log toggle
+// Re-run on log toggle (replot)
 pcLogToggle?.addEventListener("change", () => {
   if (!lastRun) return;
-  try {
-    doRun({ scroll: false });
-  } catch (err) {
-    alert(err?.message || String(err));
-  }
+  try { doRun({ scroll: false }); }
+  catch (err) { alert(err?.message || String(err)); }
 });
 
 // Movement toggle (CTA)
