@@ -44,19 +44,6 @@ const pcUniverse = el("pc-universe");
 const pcLogToggle = el("pc-log");
 const pcBack = el("pc-back");
 
-function bindLotClickOnce() {
-  if (!pcUniverse || pcUniverse.__pcLotClickBound) return;
-  pcUniverse.__pcLotClickBound = true;
-
-  pcUniverse.on("plotly_click", (ev) => {
-    const p = ev?.points?.[0];
-    const url = p?.customdata?.[3];
-    if (url && typeof url === "string") {
-      window.open(url, "_blank", "noopener,noreferrer");
-    }
-  });
-}
-
 // Context + movement panel
 const pcContextText = el("pc-context-text");
 const pcMove = el("pc-move");
@@ -70,6 +57,7 @@ const heroSub = document.querySelector(".hero-sub");
 const defaultHeroTitle = heroTitle ? heroTitle.textContent : "";
 const defaultHeroSub = heroSub ? heroSub.textContent : "";
 
+// ---------- Hero helpers (changes ONLY after Check price) ----------
 function setHeroForResults({ artistName, price, purchaseMonth }) {
   if (heroTitle) heroTitle.textContent = "My Artwork";
 
@@ -85,6 +73,7 @@ function resetHero() {
   if (heroSub) heroSub.textContent = defaultHeroSub;
 }
 
+// ---------- Context copy ----------
 function setFMVContextCopy() {
   if (!pcContextText) return;
   pcContextText.textContent =
@@ -93,7 +82,7 @@ function setFMVContextCopy() {
     "if more works sell above it, fair market value has likely decreased.";
 }
 
-// ----- Helpers -----
+// ---------- View helpers ----------
 function showForm() {
   pcFormCard?.classList.remove("hidden");
   pcResults?.classList.add("hidden");
@@ -107,9 +96,32 @@ function showResults() {
   setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
 }
 
+// ---------- Scatter click-through ----------
+function bindLotClickOnce() {
+  if (!pcUniverse || pcUniverse.__pcLotClickBound) return;
+  pcUniverse.__pcLotClickBound = true;
+
+  pcUniverse.on("plotly_click", (ev) => {
+    const p = ev?.points?.[0];
+    const url = p?.customdata?.[3];
+    if (url && typeof url === "string") {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  });
+}
+
+// ---------- Highlight toggle ----------
+function setRankingHighlight(isOn) {
+  if (!pcUniverse?.data) return;
+  const idx = pcUniverse.data.findIndex((t) => t?.meta === "pc_highlight_now");
+  if (idx < 0) return;
+  Plotly.restyle(pcUniverse, { visible: isOn }, [idx]);
+}
+
 function collapseMovePanel() {
   pcMoveToggle?.setAttribute("aria-expanded", "false");
   pcMove?.classList.add("hidden");
+  setRankingHighlight(false);
 }
 
 // ----- Load CSV -----
@@ -193,6 +205,9 @@ function doRun({ scroll = true } = {}) {
     elChart: pcUniverse,
   });
 
+  // Ensure click-through handler exists after plotting
+  bindLotClickOnce();
+
   lastRun = { artistId, price, myMonthYYYYMM: myMonth };
 
   // Hero ONLY after pressing Check price
@@ -208,24 +223,35 @@ function doRun({ scroll = true } = {}) {
 }
 
 pcRun?.addEventListener("click", () => {
-  try { doRun({ scroll: true }); }
-  catch (err) { alert(err?.message || String(err)); }
+  try {
+    doRun({ scroll: true });
+  } catch (err) {
+    alert(err?.message || String(err));
+  }
 });
 
 // ----- Toggle y-scale (re-run) -----
 pcLogToggle?.addEventListener("change", () => {
   if (!lastRun) return;
-  try { doRun({ scroll: false }); }
-  catch (err) { alert(err?.message || String(err)); }
+  try {
+    doRun({ scroll: false });
+  } catch (err) {
+    alert(err?.message || String(err));
+  }
 });
 
 // ----- Movement toggle (CTA) -----
 pcMoveToggle?.addEventListener("click", () => {
   const open = pcMoveToggle.getAttribute("aria-expanded") === "true";
-  pcMoveToggle.setAttribute("aria-expanded", String(!open));
+  const next = !open;
+
+  pcMoveToggle.setAttribute("aria-expanded", String(next));
   pcMove?.classList.toggle("hidden", open);
 
-  if (open === false) {
+  // Highlight ranking-window points when panel is open
+  setRankingHighlight(next);
+
+  if (next) {
     setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
   }
 });
