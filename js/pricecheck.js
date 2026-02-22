@@ -33,72 +33,31 @@ function parseYYYYMM(s){
   return new Date(Date.UTC(y, m-1, 1));
 }
 
-function renderBands(el, opts){
-  if(!el) return;
-
-  const { p30, p50, p70, priceNow, equivNow, captionText="" } = opts;
-
-  if(![p30,p50,p70,priceNow,equivNow].every(Number.isFinite)){
-    el.innerHTML = "";
-    return;
-  }
-
-  const xmin = Math.min(p30, p50, p70, priceNow, equivNow);
-  const xmax = Math.max(p30, p50, p70, priceNow, equivNow);
-  const pad = (xmax - xmin) * 0.08 || 1;
-  const range = [Math.max(0, xmin - pad), xmax + pad];
-
-  Plotly.newPlot(el, [
-    {
-      x:[p30,p70], y:[0,0],
-      mode:"lines",
-      line:{width:12,color:"rgba(44,58,92,0.10)"},
-      hoverinfo:"skip",
-      showlegend:false
-    },
-    {
-      x:[p50,p50], y:[-0.18,0.18],
-      mode:"lines",
-      line:{width:2,color:"rgba(0,0,0,0.25)"},
-      hoverinfo:"skip",
-      showlegend:false
-    },
-    {
-      x:[priceNow], y:[0],
-      mode:"markers",
-      marker:{size:12,color:"#fee7b1",line:{width:3,color:"#2c3a5c"}},
-      text:[`Your price: ${fmtGBP(priceNow)}`],
-      hoverinfo:"text",
-      showlegend:false
-    },
-    {
-      x:[equivNow], y:[0],
-      mode:"markers",
-      marker:{size:11,color:"#2c3a5c"},
-      text:[`Equivalent level today: ${fmtGBP(equivNow)}`],
-      hoverinfo:"text",
-      showlegend:false
-    }
-  ],{
-    margin:{l:16,r:16,t:10,b:34},
-    xaxis:{
-      range,
-      showgrid:false,
-      zeroline:false,
-      showline:false,
-      ticks:"outside",
-      ticklen:4,
-      separatethousands:true
-    },
-    yaxis:{visible:false,range:[-0.6,0.6]},
-    paper_bgcolor:"rgba(0,0,0,0)",
-    plot_bgcolor:"rgba(0,0,0,0)"
-  },{displayModeBar:false,responsive:true});
-
-  const capEl=document.getElementById("pc-bands-caption");
-  if(capEl) capEl.textContent=captionText;
+function addMonthsUTC(d, deltaMonths){
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + deltaMonths, 1));
 }
 
+function windowN(allRows, endDate, months){
+  const start = addMonthsUTC(endDate, -(months - 1));
+  return allRows.filter(r => r.date >= start && r.date <= endDate);
+}
+
+function quartileAverage(rows, qIndex){
+  const prices = rows.map(r=>r.price).filter(Number.isFinite).sort((a,b)=>a-b);
+  if(prices.length < 4) return NaN;
+  const low  = quantile(prices, qIndex * 0.25);
+  const high = quantile(prices, (qIndex + 1) * 0.25);
+  const band = prices.filter(p => p >= low && p <= high);
+  if(!band.length) return NaN;
+  return band.reduce((a,b)=>a+b,0) / band.length;
+}
+
+/**
+ * Main entry
+ * - Always renders scatter
+ * - Computes percentile + "equivalent level today" when feasible
+ * - Never throws for window insufficiency
+ */
 export function runPriceCheck({
   workbench,
   artistId,
@@ -109,83 +68,94 @@ export function runPriceCheck({
 }){
 
   const all = workbench.getLotRows()
-    .filter(r=>r.id===artistId && Number.isFinite(r.price) && r.date)
+    .filter(r => r.id === artistId && Number.isFinite(r.price) && r.date)
     .sort((a,b)=>a.date-b.date);
 
-  if(all.length < 40) throw new Error("Not enough auction history.");
+  if(all.length < 10) throw new Error("Not enough auction history.");
 
   const artworkDate = parseYYYYMM(myMonthYYYYMM) || all[all.length-1].date;
   const latestDate  = all[all.length-1].date;
 
-  function window48(endDate){
-    const start = new Date(Date.UTC(
-      endDate.getUTCFullYear(),
-      endDate.getUTCMonth()-47,
-      1
-    ));
-    return all.filter(r=>r.date>=start && r.date<=endDate);
+  // --- Always render scatter first (nothing below can block chart rendering) ---
+  const x = all.map(r=>r.date);
+  const y = all.map(r=>r.price);
+
+  const baseTrace = {
+    x, y,
+    type: "scattergl",
+    mode: "markers",
+    marker: { size: 6, color: "#2f3b63" },
+    hovertemplate: "%{x|%b %Y}<br>%{y:,.0f}<extra></extra>",
+    name: "Auction sales",
+    showlegend: false
+  };
+
+  // My Artwork dot as a separate trace, plotted LAST so it sits on top
+  const myArtworkTrace = (Number.isFinite(price) ? {
+    x: [artworkDate],
+    y: [price],
+    type: "scattergl",
+    mode: "markers",
+    marker: {
+      size: 14,
+      color: "#fee7b1",
+      line: { width: 3, color: "#2c3a5c" }
+    },
+    hovertemplate: `My Artwork<br>%{x|%b %Y}<br>${fmtGBP(price)}<extra></extra>`,
+    name: "My Artwork",
+    showlegend: false
+  } : null);
+
+  const traces = myArtworkTrace ? [baseTrace, myArtworkTrace] : [baseTrace];
+
+  Plotly.newPlot(elChart, traces, {
+    margin: { l: 56, r: 18, t: 26, b: 48 },
+    yaxis: { type: (yScale === "log") ? "log" : "linear" },
+    xaxis: { type: "date" },
+    paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)"
+  }, { responsive: true, displayModeBar: false });
+
+  // --- Now compute stats (safe / non-blocking) ---
+  // Percentile at purchase month (based on ALL data up to that month, not a fixed 48M gate)
+  const thenUniverse = all.filter(r => r.date <= artworkDate);
+  const thenPricesAll = thenUniverse.map(r=>r.price).sort((a,b)=>a-b);
+  const pct = percentileRank(thenPricesAll, price);
+
+  // "Equivalent level today" (your quartile-average transport idea) with a 24M window
+  // If insufficient data, return equivNow = null (do not throw)
+  const TRANSPORT_WINDOW_MONTHS = 24;
+  const MIN_SALES_IN_WINDOW = 12;
+
+  let equivNow = null;
+
+  try {
+    const thenRows = windowN(all, artworkDate, TRANSPORT_WINDOW_MONTHS);
+    const nowRows  = windowN(all, latestDate,  TRANSPORT_WINDOW_MONTHS);
+
+    if(thenRows.length >= MIN_SALES_IN_WINDOW && nowRows.length >= MIN_SALES_IN_WINDOW && Number.isFinite(pct)){
+      const quartileIndex = Math.min(3, Math.floor(pct / 25));
+
+      const avgThen = quartileAverage(thenRows, quartileIndex);
+      const avgNow  = quartileAverage(nowRows,  quartileIndex);
+
+      if(Number.isFinite(avgThen) && Number.isFinite(avgNow) && avgThen > 0){
+        let factor = (avgNow - avgThen) / avgThen;
+
+        // Keep your conservative cap
+        const yearsElapsed = Math.max(1, (latestDate - artworkDate) / (365*24*60*60*1000));
+        const maxMove = Math.min(0.25, 0.05 * yearsElapsed);
+
+        if(factor >  maxMove) factor =  maxMove;
+        if(factor < -maxMove) factor = -maxMove;
+
+        equivNow = price * (1 + factor);
+      }
+    }
+  } catch(e){
+    // swallow: never allow this to break chart rendering
+    equivNow = null;
   }
-
-  const thenRows = window48(artworkDate);
-  const nowRows  = window48(latestDate);
-
-  if(thenRows.length<25 || nowRows.length<25)
-    throw new Error("Insufficient data in 48-month window.");
-
-  const thenPrices = thenRows.map(r=>r.price).sort((a,b)=>a-b);
-  const pct = percentileRank(thenPrices, price);
-
-  const quartileIndex = Math.min(3, Math.floor(pct/25));
-
-  function quartileAverage(rows,qIndex){
-    const prices=rows.map(r=>r.price).sort((a,b)=>a-b);
-    const low=quantile(prices,qIndex*0.25);
-    const high=quantile(prices,(qIndex+1)*0.25);
-    const band=prices.filter(p=>p>=low && p<=high);
-    return band.reduce((a,b)=>a+b,0)/band.length;
-  }
-
-  const avgThen=quartileAverage(thenRows,quartileIndex);
-  const avgNow =quartileAverage(nowRows,quartileIndex);
-
-  let factor=(avgNow-avgThen)/avgThen;
-
-  const yearsElapsed=Math.max(1,(latestDate-artworkDate)/(365*24*60*60*1000));
-  const maxMove=Math.min(0.25,0.05*yearsElapsed);
-
-  if(factor>maxMove) factor=maxMove;
-  if(factor<-maxMove) factor=-maxMove;
-
-  const equivNow=price*(1+factor);
-
-  const nowPrices=nowRows.map(r=>r.price).sort((a,b)=>a-b);
-  const p30=quantile(nowPrices,0.30);
-  const p50=quantile(nowPrices,0.50);
-  const p70=quantile(nowPrices,0.70);
-
-  renderBands(document.getElementById("pc-bands-chart"),{
-    p30,p50,p70,
-    priceNow:price,
-    equivNow,
-    captionText:
-      "Clearing bands reflect the most recent 48 months. " +
-      "The marker shows the equivalent clearing level today at the same market position."
-  });
-
-  const x=all.map(r=>r.date);
-  const y=all.map(r=>r.price);
-
-  Plotly.newPlot(elChart,[{
-    x,y,
-    type:"scattergl",
-    mode:"markers",
-    marker:{size:6,color:"#2f3b63"}
-  }],{
-    margin:{l:56,r:18,t:26,b:48},
-    yaxis:{type:(yScale==="log")?"log":"linear"},
-    paper_bgcolor:"rgba(0,0,0,0)",
-    plot_bgcolor:"rgba(0,0,0,0)"
-  },{responsive:true});
 
   return { pct, equivNow };
 }
