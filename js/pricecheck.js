@@ -331,12 +331,7 @@ function ols(xs, ys){
 
 // ------------------------------------------------------------
 // Identify the "See your price movement" toggle.
-// IMPORTANT: In your UI this is NOT a checkbox.
-// It's typically a <details><summary>...</summary></details> disclosure.
-// We'll support:
-//  - <details> (best, has open/close state + 'toggle' event)
-//  - checkbox/switch (if you ever change it later)
-//  - any clickable element containing that exact text (fallback; one-way ON)
+// Supports <details>, checkbox, and generic click fallback.
 // ------------------------------------------------------------
 function findMovementToggle(){
   const want = "see your price movement";
@@ -559,7 +554,7 @@ export function runPriceCheck({
   const p50Trace = (p50Dates.length >= 2) ? {
     x: p50Dates,
     y: p50Vals,
-    type:"scatter",
+    type:"scattergl", // PATCH: use scattergl so it layers correctly with scattergl dots
     mode:"lines",
     line:{width:3.5, color:"rgba(47,59,99,0.45)"},
     hovertemplate:"24M rolling median (p50)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
@@ -571,7 +566,7 @@ export function runPriceCheck({
   const regTrace = (regDates.length >= 2) ? {
     x: regDates,
     y: regVals,
-    type:"scatter",
+    type:"scattergl", // PATCH: use scattergl so it layers correctly with scattergl dots
     mode:"lines",
     line:{width:4.5, color:"rgba(47,59,99,0.90)"},
     hovertemplate:"Trend line (regression through rolling p50)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
@@ -583,7 +578,7 @@ export function runPriceCheck({
   const myPctTrace = (qDates.length >= 2) ? {
     x: qDates,
     y: qVals,
-    type:"scatter",
+    type:"scattergl",
     mode:"lines",
     line:{width:2.5, dash:"dot", color:"rgba(246,189,116,0.95)"},
     hovertemplate:"My percentile (24M rolling)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
@@ -603,6 +598,7 @@ export function runPriceCheck({
     meta:"pc_myartwork"
   } : null;
 
+  // IMPORTANT: base dots first, lines after, so lines draw on top
   const traces = [];
   traces.push(baseTrace);
   if(p50Trace) traces.push(p50Trace);
@@ -655,15 +651,19 @@ export function runPriceCheck({
   }
 
   // ------------------------------------------------------------
-  // UI behaviour: EXACTLY as requested
-  // - initial: normal dots, no p50/regression
-  // - when user opens "See your price movement": show p50+reg and lighten dots (solid)
+  // UI behaviour:
+  // - initial: normal dots, no p50/regression, movement slider hidden
+  // - when user opens "See your price movement":
+  //     * show p50 + regression
+  //     * switch dots to LIGHT BLUE (100% opacity)
+  //     * show movement slider (pc-move-chart)
+  //     * allow optional my-percentile line toggle
   // ------------------------------------------------------------
   plotPromise.then(() => {
     const ctl = findMovementToggle();
 
     const DARK_DOT  = "#2f3b63";
-    const LIGHT_DOT = "#9bb7e0"; // light blue, 100% opacity
+    const LIGHT_DOT = "#9bb7e0";
 
     const gd = elChart;
     const data = (gd && gd.data) ? gd.data : [];
@@ -673,38 +673,69 @@ export function runPriceCheck({
     const idxReg  = data.findIndex(t => t && t.meta === "pc_p50_reg");
     const idxMy   = data.findIndex(t => t && t.meta === "pc_mypercentile_24");
 
-    const cbPct = document.getElementById("pc-show-mypercentile"); // optional existing checkbox
+    const cbPct = document.getElementById("pc-show-mypercentile"); // optional
+    const moveEl = document.getElementById("pc-move-chart");
+    const capEl  = document.getElementById("pc-move-caption");
 
     const applyMode = (on) => {
+      // dots
       if(idxBase >= 0){
         Plotly.restyle(gd, { "marker.color": on ? LIGHT_DOT : DARK_DOT }, [idxBase]);
       }
+      // p50/reg
       if(idxP50 >= 0){
         Plotly.restyle(gd, { visible: on ? true : false }, [idxP50]);
       }
       if(idxReg >= 0){
         Plotly.restyle(gd, { visible: on ? true : false }, [idxReg]);
       }
+
+      // optional my-percentile line should not survive turning OFF
       if(!on && idxMy >= 0){
         Plotly.restyle(gd, { visible: false }, [idxMy]);
         if(cbPct) cbPct.checked = false;
       }
+
+      // movement slider (RESTORED)
+      if(moveEl){
+        if(!on){
+          moveEl.innerHTML = "";
+          if(capEl) capEl.textContent = "";
+        } else {
+          if(Number.isFinite(equivNow)){
+            renderMovement(moveEl, {
+              price,
+              equivNow,
+              captionText:
+                "Indicative value today is estimated by tracking the artist’s typical market level: " +
+                "we calculate a 24-month rolling median (p50), fit a trend line through it, " +
+                "then revalue your purchase price by the change in that trend between your purchase month and today."
+            });
+          } else {
+            moveEl.innerHTML = "";
+            if(capEl){
+              capEl.textContent = "Not enough recent auction activity to estimate an indicative value today for this artist.";
+            }
+          }
+        }
+      }
     };
 
-    // Helper: derive ON/OFF state from the actual control type
-    let clickState = false; // for generic click fallback
+    // Determine ON/OFF state from the actual control type
+    let clickState = false;
+
     const getOn = () => {
-      if(!ctl) return false; // if we can't find the control, keep OFF (so chart stays clean)
-      if(ctl.kind === "details") return !!ctl.el.open;
+      if(!ctl) return false;
+      if(ctl.kind === "details")  return !!ctl.el.open;
       if(ctl.kind === "checkbox") return !!ctl.el.checked;
-      if(ctl.kind === "click") return !!clickState;
+      if(ctl.kind === "click")    return !!clickState;
       return false;
     };
 
-    // Initial state: OFF unless the details is already open
+    // initial
     applyMode(getOn());
 
-    // If my-percentile checkbox exists, only allow it when movement is ON
+    // optional percentile checkbox behaviour
     if(cbPct && idxMy >= 0){
       const onPctChange = () => {
         const on = getOn();
@@ -714,13 +745,11 @@ export function runPriceCheck({
       onPctChange();
     }
 
-    // Bind the actual toggle
     if(!ctl) return;
 
     if(ctl.kind === "details"){
       ctl.el.addEventListener("toggle", () => {
         applyMode(getOn());
-        // keep my-percentile consistent if present
         if(cbPct && idxMy >= 0){
           Plotly.restyle(gd, { visible: (getOn() && cbPct.checked) ? true : false }, [idxMy]);
         }
@@ -738,7 +767,6 @@ export function runPriceCheck({
       return;
     }
 
-    // Generic clickable fallback: toggle our own state
     if(ctl.kind === "click"){
       ctl.el.addEventListener("click", () => {
         clickState = !clickState;
