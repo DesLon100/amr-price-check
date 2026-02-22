@@ -52,6 +52,68 @@ function quartileAverage(rows, qIndex){
   return band.reduce((a,b)=>a+b,0) / band.length;
 }
 
+// Slider-style movement chart (restored, but no clearing-bands framing)
+function renderMovement(el, { price, equivNow, captionText = "" }){
+  if(!el) return;
+
+  // If we don't have an equivNow, don't plot junk
+  if(!Number.isFinite(price) || !Number.isFinite(equivNow)){
+    el.innerHTML = "";
+    return;
+  }
+
+  const xmin = Math.min(price, equivNow);
+  const xmax = Math.max(price, equivNow);
+  const pad = (xmax - xmin) * 0.12 || (xmax * 0.08) || 1;
+  const range = [Math.max(0, xmin - pad), xmax + pad];
+
+  Plotly.newPlot(el, [
+    // light rail
+    {
+      x: [range[0], range[1]], y: [0,0],
+      mode: "lines",
+      line: { width: 12, color: "rgba(44,58,92,0.10)" },
+      hoverinfo: "skip",
+      showlegend: false
+    },
+    // My Artwork marker (input price)
+    {
+      x: [price], y: [0],
+      mode: "markers",
+      marker: { size: 12, color: "#fee7b1", line: { width: 3, color: "#2c3a5c" } },
+      text: [`My Artwork: ${fmtGBP(price)}`],
+      hoverinfo: "text",
+      showlegend: false
+    },
+    // Indicative value today marker (equivNow)
+    {
+      x: [equivNow], y: [0],
+      mode: "markers",
+      marker: { size: 11, color: "#2c3a5c" },
+      text: [`Indicative value today: ${fmtGBP(equivNow)}`],
+      hoverinfo: "text",
+      showlegend: false
+    }
+  ], {
+    margin: { l: 16, r: 16, t: 10, b: 34 },
+    xaxis: {
+      range,
+      showgrid: false,
+      zeroline: false,
+      showline: false,
+      ticks: "outside",
+      ticklen: 4,
+      separatethousands: true
+    },
+    yaxis: { visible: false, range: [-0.6, 0.6] },
+    paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)"
+  }, { displayModeBar: false, responsive: true });
+
+  const capEl = document.getElementById("pc-move-caption");
+  if(capEl) capEl.textContent = captionText;
+}
+
 /**
  * Main entry
  * - Always renders scatter
@@ -76,7 +138,7 @@ export function runPriceCheck({
   const artworkDate = parseYYYYMM(myMonthYYYYMM) || all[all.length-1].date;
   const latestDate  = all[all.length-1].date;
 
-  // --- Always render scatter first (nothing below can block chart rendering) ---
+  // --- Always render scatter ---
   const x = all.map(r=>r.date);
   const y = all.map(r=>r.price);
 
@@ -86,11 +148,10 @@ export function runPriceCheck({
     mode: "markers",
     marker: { size: 6, color: "#2f3b63" },
     hovertemplate: "%{x|%b %Y}<br>%{y:,.0f}<extra></extra>",
-    name: "Auction sales",
     showlegend: false
   };
 
-  // My Artwork dot as a separate trace, plotted LAST so it sits on top
+  // My Artwork dot as separate trace, plotted LAST
   const myArtworkTrace = (Number.isFinite(price) ? {
     x: [artworkDate],
     y: [price],
@@ -102,7 +163,6 @@ export function runPriceCheck({
       line: { width: 3, color: "#2c3a5c" }
     },
     hovertemplate: `My Artwork<br>%{x|%b %Y}<br>${fmtGBP(price)}<extra></extra>`,
-    name: "My Artwork",
     showlegend: false
   } : null);
 
@@ -116,14 +176,12 @@ export function runPriceCheck({
     plot_bgcolor: "rgba(0,0,0,0)"
   }, { responsive: true, displayModeBar: false });
 
-  // --- Now compute stats (safe / non-blocking) ---
-  // Percentile at purchase month (based on ALL data up to that month, not a fixed 48M gate)
+  // --- Stats (non-blocking) ---
   const thenUniverse = all.filter(r => r.date <= artworkDate);
   const thenPricesAll = thenUniverse.map(r=>r.price).sort((a,b)=>a-b);
   const pct = percentileRank(thenPricesAll, price);
 
-  // "Equivalent level today" (your quartile-average transport idea) with a 24M window
-  // If insufficient data, return equivNow = null (do not throw)
+  // Transport-style "indicative value today"
   const TRANSPORT_WINDOW_MONTHS = 24;
   const MIN_SALES_IN_WINDOW = 12;
 
@@ -142,7 +200,6 @@ export function runPriceCheck({
       if(Number.isFinite(avgThen) && Number.isFinite(avgNow) && avgThen > 0){
         let factor = (avgNow - avgThen) / avgThen;
 
-        // Keep your conservative cap
         const yearsElapsed = Math.max(1, (latestDate - artworkDate) / (365*24*60*60*1000));
         const maxMove = Math.min(0.25, 0.05 * yearsElapsed);
 
@@ -153,8 +210,27 @@ export function runPriceCheck({
       }
     }
   } catch(e){
-    // swallow: never allow this to break chart rendering
     equivNow = null;
+  }
+
+  // Render movement slider if possible; otherwise leave it empty
+  const moveEl = document.getElementById("pc-move-chart");
+  if(moveEl){
+    if(Number.isFinite(equivNow)){
+      renderMovement(moveEl, {
+        price,
+        equivNow,
+        captionText:
+          "Indicative value today is estimated by re-ranking your price against the artist’s most recent 24 months of auction sales."
+      });
+    } else {
+      moveEl.innerHTML = "";
+      const capEl = document.getElementById("pc-move-caption");
+      if(capEl){
+        capEl.textContent =
+          "Not enough recent auction activity to estimate an indicative value today for this artist.";
+      }
+    }
   }
 
   return { pct, equivNow };
