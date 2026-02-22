@@ -101,13 +101,14 @@ function bindLotClickOnce() {
   if (!pcUniverse || pcUniverse.__pcLotClickBound) return;
   pcUniverse.__pcLotClickBound = true;
 
- pcUniverse.on("plotly_click", (ev) => {
-  const p = ev?.points?.[0];
-  const url = p?.customdata?.[2];
-  if (url && typeof url === "string") {
-    window.open(url, "_blank", "noopener,noreferrer");
-  }
-});
+  pcUniverse.on("plotly_click", (ev) => {
+    const p = ev?.points?.[0];
+    const url = p?.customdata?.[2]; // [House (City), LotNo, SaleURL]
+    if (url && typeof url === "string") {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  });
+} // ✅ THIS BRACE WAS MISSING IN YOUR FILE
 
 // Highlight toggle (both windows)
 function setRankingHighlight(isOn) {
