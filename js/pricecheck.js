@@ -388,11 +388,13 @@ export function runPriceCheck({
     getSaleURL(r)
   ]);
 
-  const hovertemplate =
-    "%{x|%b %Y}<br>" +
-    "<b>£%{y:,.0f}</b><br>" +
-    "%{customdata[0]}<br>" +
-    "Lot %{customdata[1]}<extra>Click to open sale</extra>";
+const hovertemplate =
+  "%{x|%b %Y}<br>" +
+  "<b>£%{y:,.0f}</b><br>" +
+  "%{customdata[0]}<br>" +
+  "Lot %{customdata[1]}<br>" +
+  "<a href='%{customdata[2]}' target='_blank' rel='noopener noreferrer'>Open sale ↗</a>" +
+  "<extra></extra>";
 
   const baseTrace = {
     x, y,
