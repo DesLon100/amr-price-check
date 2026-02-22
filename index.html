@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Artwork Price Check</title>
 
+  <!-- Plotly (upgrade fixes the Event.target getter crash) -->
   <script src="https://cdn.plot.ly/plotly-3.3.0.min.js"></script>
+
   <link rel="stylesheet" href="css/app.css" />
 </head>
 
@@ -25,6 +27,7 @@
       <div class="hero">
         <h1 class="hero-title">
           <span class="hero-title-text">Check my artwork's price</span>
+          <!-- hero dot (hidden until results) -->
           <span id="hero-dot" class="hero-dot hidden" aria-hidden="true"></span>
         </h1>
         <p class="hero-sub">Instantly see where your artwork sits in the auction market.</p>
@@ -63,33 +66,24 @@
         <div class="pc-chart-wrap">
           <div id="pc-universe" class="pc-chart"></div>
 
-          <!-- Stable click target (updates on hover) -->
-          <div id="pc-sale-link-wrap" class="pc-sale-link-wrap hidden">
-            <a id="pc-sale-link" class="pc-sale-link" href="#" target="_blank" rel="noopener noreferrer">
-              Open sale ↗
-            </a>
-          </div>
-
           <!-- Linear / Log toggle -->
           <div class="pc-toggle-row">
             <span class="muted">Linear</span>
-
             <label class="switch">
               <input id="pc-log" type="checkbox" />
               <span class="slider"></span>
             </label>
-
             <span class="muted">Log</span>
           </div>
         </div>
 
-        <!-- Investor-safe sentence (directly under toggle) -->
+        <!-- Context -->
         <div class="pc-section">
           <h3 class="pc-section-title">Fair Market Value Movement</h3>
           <div id="pc-context-text" class="pc-context-text"></div>
         </div>
 
-        <!-- Movement toggle (CTA) -->
+        <!-- CTA toggle -->
         <div class="pc-context">
           <button
             id="pc-move-toggle"
@@ -101,15 +95,9 @@
           </button>
         </div>
 
-        <!-- Collapsible movement slider -->
+        <!-- Collapsible movement -->
         <div id="pc-move" class="pc-bands hidden">
           <div id="pc-move-chart" class="pc-bands-chart"></div>
-
-          <div class="pc-bands-legend">
-            <span class="dot dot-your"></span> My Artwork
-            <span class="dot dot-equiv" style="margin-left:14px;"></span> Indicative value today
-          </div>
-
           <div id="pc-move-caption" class="pc-bands-caption"></div>
         </div>
 
@@ -122,6 +110,7 @@
     </section>
   </div>
 
+  <!-- Cache-bust -->
   <script type="module" src="js/app.js?v=1"></script>
 </body>
 </html>
