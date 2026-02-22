@@ -390,7 +390,7 @@ export function runPriceCheck({
   const latestDate  = all[all.length-1].date;
 
   const TRANSPORT_WINDOW_MONTHS = 24;
-  const MIN_SALES_IN_WINDOW = 30;
+  const MIN_SALES_IN_WINDOW = 12;
 
   // (still used for "highlight windows" calculations elsewhere, but we are removing
   // the orange highlight traces entirely)
