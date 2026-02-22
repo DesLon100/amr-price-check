@@ -62,9 +62,21 @@ function setHeroForResults({ artistName, price, purchaseMonth }) {
   if (heroTitleTextEl) heroTitleTextEl.textContent = "My Artwork";
   heroDot?.classList.remove("hidden");
 
-  const parts = [artistName, fmtGBP0(price)];
-  const monthLabel = fmtYYYYMMLabel(purchaseMonth);
-  if (monthLabel) parts.push(monthLabel);
+  const parts = [];
+
+  if (artistName) parts.push(artistName);
+  if (Number.isFinite(price)) parts.push(fmtGBP0(price));
+
+  // Accept raw YYYYMM directly
+  const raw = String(purchaseMonth || "").trim();
+  if (/^\d{6}$/.test(raw)) {
+    const y = Number(raw.slice(0,4));
+    const m = Number(raw.slice(4,6)) - 1;
+    const d = new Date(Date.UTC(y, m, 1));
+    const label = d.toLocaleString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
+    parts.push(label);
+  }
+
   if (heroSub) heroSub.textContent = parts.join(" · ");
 }
 
