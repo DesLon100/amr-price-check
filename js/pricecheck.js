@@ -473,4 +473,3 @@ export function runPriceCheck({
   return { pct, equivNow, plotPromise };
 }
 
-::contentReference[oaicite:0]{index=0}
