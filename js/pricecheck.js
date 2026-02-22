@@ -2,7 +2,7 @@
 
 // ------------------------------------------------------------
 // LocationCode -> "Auction house · CITY" mapping
-// Generated from your uploaded: AMR Location ids.xlsx
+// Generated from your uploaded: AMR Location ids.xlsx (197 entries)
 // ------------------------------------------------------------
 const LOCATION_LOOKUP = {
   "33AUBALI": "33 Auction · BALI",
@@ -19,6 +19,9 @@ const LOCATION_LOOKUP = {
   "AUCTONLI": "Auctionsverket · ONLINE",
   "AUCTOSEK": "Auctionsverket · ONLINE SEK",
   "AUCTSTOC": "Auctionsverket · STOCKHOLM",
+  "AUCTOLDD": "Auctionsverket · ONLINE DKK",
+  "AUCTOEUR": "Auctionsverket · ONLINE EUR",
+  "AUCTOUSD": "Auctionsverket · ONLINE USD",
   "CHPOBEIJ": "Beijing Poly Intl · BEIJING",
   "CHPOHONG": "Beijing Poly Intl · HONG KONG",
   "BONHBRED": "Bonhams · BREDGATE",
@@ -173,7 +176,6 @@ const LOCATION_LOOKUP = {
   "SOTHNEWY": "Sotheby's · NEW YORK",
   "SOTHONLI": "Sotheby's · ONLINE",
   "SOTHOCHF": "Sotheby's · ONLINE CHF",
-  "SOTHOHCF": "Sotheby's · ONLINE CHF",
   "SOTHOEUR": "Sotheby's · ONLINE EUR",
   "SOTHOGBP": "Sotheby's · ONLINE GBP",
   "SOTHOHKD": "Sotheby's · ONLINE HKD",
@@ -200,14 +202,11 @@ const LOCATION_LOOKUP = {
   "VGRIOEUR": "Villa Grisebach · ONLINE EUR",
   "ARTCBASE": "Artcurial · BASEL",
   "ARTCOCHF": "Artcurial · ONLINE EUR",
-  "AUCTHELS": "Auktionsverket · HELSINKI",
+  "AUCTHELS": "Auktionsverket · HELSINKY",
   "SOTHSAAR": "Sothebys · SAUDI ARABIA"
 };
 
-// IMPORTANT: The mapping is long (~197 entries).
-// I’ve truncated the middle here to keep the message readable.
-// You should paste the *full* mapping block I provide below this code section.
-// ------------------------------------------------------------
+// Convert "House · CITY" to "House (City)"
 function locationLabel(code){
   const c = String(code || "").trim();
   if(!c) return "—";
@@ -228,6 +227,7 @@ function locationLabel(code){
 
   return raw;
 }
+
 function fmtGBP(x){
   if(!Number.isFinite(x)) return "—";
   return "£" + Math.round(x).toLocaleString("en-GB");
@@ -338,16 +338,11 @@ function renderMovement(el, { price, equivNow, captionText = "" }){
   if(capEl) capEl.textContent = captionText;
 }
 
-// --- CSV schema (from your screenshot) ---
+// --- CSV schema ---
+// ArtistID, ArtistName, MonthYYYYMM, ValueGBP, LocationID, LocationCode, AuctionID, LotNo, SaleURL
 function getLocationCode(r){ return (r.LocationCode ?? r.locationCode ?? r.location_code ?? r.location ?? ""); }
 function getLotNo(r){ return (r.LotNo ?? r.lotNo ?? r.lotno ?? r.lot ?? "—"); }
 function getSaleURL(r){ return (r.SaleURL ?? r.saleURL ?? r.url ?? r.link ?? ""); }
-
-function locationLabel(code){
-  const c = String(code || "").trim();
-  if(!c) return "—";
-  return LOCATION_LOOKUP[c] || c; // fallback to raw code if missing
-}
 
 /**
  * Main entry
@@ -386,7 +381,7 @@ export function runPriceCheck({
   const x = all.map(r=>r.date);
   const y = all.map(r=>r.price);
 
-  // customdata = [AuctionHouse·City, LotNo, SaleURL]
+  // customdata = [House (City), LotNo, SaleURL]
   const customdata = all.map(r => [
     locationLabel(getLocationCode(r)),
     getLotNo(r),
@@ -411,8 +406,8 @@ export function runPriceCheck({
   };
 
   // ---- Highlight traces (hidden by default; toggled in app.js) ----
-  const ORANGE_NOW  = "#f4a261";
-  const ORANGE_THEN = "#f6bd74";
+  const ORANGE_THEN = "#f6bd74"; // purchase window
+  const ORANGE_NOW  = "#f4a261"; // latest window
 
   const thenTrace = {
     x: thenRowsHighlight.map(r => r.date),
@@ -448,7 +443,7 @@ export function runPriceCheck({
     meta: "pc_highlight_now"
   };
 
-  // My Artwork dot (always last)
+  // My Artwork dot (always last so it sits on top)
   const myArtworkTrace = (Number.isFinite(price) ? {
     x: [artworkDate],
     y: [price],
@@ -497,6 +492,7 @@ export function runPriceCheck({
       if(Number.isFinite(avgThen) && Number.isFinite(avgNow) && avgThen > 0){
         let factor = (avgNow - avgThen) / avgThen;
 
+        // Conservative cap
         const yearsElapsed = Math.max(1, (latestDate - artworkDate) / (365*24*60*60*1000));
         const maxMove = Math.min(0.25, 0.05 * yearsElapsed);
 
