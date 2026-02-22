@@ -208,7 +208,26 @@ const LOCATION_LOOKUP = {
 // I’ve truncated the middle here to keep the message readable.
 // You should paste the *full* mapping block I provide below this code section.
 // ------------------------------------------------------------
+function locationLabel(code){
+  const c = String(code || "").trim();
+  if(!c) return "—";
 
+  const raw = LOCATION_LOOKUP[c] || c;
+
+  if(raw.includes("·")){
+    const parts = raw.split("·").map(s => s.trim());
+    const house = parts[0] || "";
+    const cityRaw = parts[1] || "";
+
+    const city = cityRaw
+      .toLowerCase()
+      .replace(/\b\w/g, l => l.toUpperCase());
+
+    return `${house} (${city})`;
+  }
+
+  return raw;
+}
 function fmtGBP(x){
   if(!Number.isFinite(x)) return "—";
   return "£" + Math.round(x).toLocaleString("en-GB");
