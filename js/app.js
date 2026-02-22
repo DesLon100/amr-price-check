@@ -1,6 +1,6 @@
 // js/app.js
-import { runPriceCheck } from "./pricecheck.js";
-import { loadPriceCheckCSV } from "./data.js";
+import { runPriceCheck } from "./pricecheck.js?v=1";
+import { loadPriceCheckCSV } from "./data.js?v=1";
 
 const el = (id) => document.getElementById(id);
 const escapeHtml = (s) =>
