@@ -206,7 +206,7 @@ const LOCATION_LOOKUP = {
   "SOTHSAAR": "Sothebys · SAUDI ARABIA"
 };
 
-// Convert "House · CITY" to "House (City)"
+// Convert "House · CITY" to "House (City)" with nicer city case
 function locationLabel(code){
   const c = String(code || "").trim();
   if(!c) return "—";
@@ -351,6 +351,8 @@ function getSaleURL(r){ return (r.SaleURL ?? r.saleURL ?? r.url ?? r.link ?? "")
  * - Adds two hidden highlight traces:
  *    - 24M window ending at purchase month ("then")
  *    - 24M window ending at latest month ("now")
+ *
+ * Returns: { pct, equivNow, plotPromise }
  */
 export function runPriceCheck({
   workbench,
@@ -370,14 +372,12 @@ export function runPriceCheck({
   const artworkDate = parseYYYYMM(myMonthYYYYMM) || all[all.length-1].date;
   const latestDate  = all[all.length-1].date;
 
-  // Windows used by the indicative value (and by highlighting)
   const TRANSPORT_WINDOW_MONTHS = 24;
   const MIN_SALES_IN_WINDOW = 12;
 
   const thenRowsHighlight = windowN(all, artworkDate, TRANSPORT_WINDOW_MONTHS);
   const nowRowsHighlight  = windowN(all, latestDate,  TRANSPORT_WINDOW_MONTHS);
 
-  // ---- Scatter base + hover ----
   const x = all.map(r=>r.date);
   const y = all.map(r=>r.price);
 
@@ -388,13 +388,12 @@ export function runPriceCheck({
     getSaleURL(r)
   ]);
 
-const hovertemplate =
-  "%{x|%b %Y}<br>" +
-  "<b>£%{y:,.0f}</b><br>" +
-  "%{customdata[0]}<br>" +
-  "Lot %{customdata[1]}<br>" +
-  "<a href='%{customdata[2]}' target='_blank' rel='noopener noreferrer'>Open sale ↗</a>" +
-  "<extra></extra>";
+  const hovertemplate =
+    "%{x|%b %Y}<br>" +
+    "<b>£%{y:,.0f}</b><br>" +
+    "%{customdata[0]}<br>" +
+    "Lot %{customdata[1]}" +
+    "<extra>Click dot to open sale</extra>";
 
   const baseTrace = {
     x, y,
@@ -407,9 +406,8 @@ const hovertemplate =
     meta: "pc_base"
   };
 
-  // ---- Highlight traces (hidden by default; toggled in app.js) ----
-  const ORANGE_THEN = "#f6bd74"; // purchase window
-  const ORANGE_NOW  = "#f4a261"; // latest window
+  const ORANGE_THEN = "#f6bd74";
+  const ORANGE_NOW  = "#f4a261";
 
   const thenTrace = {
     x: thenRowsHighlight.map(r => r.date),
@@ -445,7 +443,6 @@ const hovertemplate =
     meta: "pc_highlight_now"
   };
 
-  // My Artwork dot (always last so it sits on top)
   const myArtworkTrace = (Number.isFinite(price) ? {
     x: [artworkDate],
     y: [price],
@@ -465,7 +462,7 @@ const hovertemplate =
     ? [baseTrace, thenTrace, nowTrace, myArtworkTrace]
     : [baseTrace, thenTrace, nowTrace];
 
-  Plotly.newPlot(elChart, traces, {
+  const plotPromise = Plotly.newPlot(elChart, traces, {
     margin: { l: 56, r: 18, t: 26, b: 48 },
     yaxis: { type: (yScale === "log") ? "log" : "linear" },
     xaxis: { type: "date" },
@@ -494,7 +491,6 @@ const hovertemplate =
       if(Number.isFinite(avgThen) && Number.isFinite(avgNow) && avgThen > 0){
         let factor = (avgNow - avgThen) / avgThen;
 
-        // Conservative cap
         const yearsElapsed = Math.max(1, (latestDate - artworkDate) / (365*24*60*60*1000));
         const maxMove = Math.min(0.25, 0.05 * yearsElapsed);
 
@@ -528,5 +524,5 @@ const hovertemplate =
     }
   }
 
-  return { pct, equivNow };
+  return { pct, equivNow, plotPromise };
 }
