@@ -32,43 +32,44 @@ function fmtYYYYMMLabel(yyyymm) {
 const file = el("file");
 const status = el("status");
 
-// Price check elements
+// Form
 const pcFormCard = el("pc-form-card");
 const pcArtist = el("pc-artist");
 const pcPrice = el("pc-price");
 const pcMonth = el("pc-month");
 const pcRun = el("pc-run");
 
+// Results
 const pcResults = el("pc-results");
 const pcUniverse = el("pc-universe");
 const pcLogToggle = el("pc-log");
 const pcBack = el("pc-back");
 
-// Context + movement panel
+// Context + movement
 const pcContextText = el("pc-context-text");
 const pcMove = el("pc-move");
 const pcMoveToggle = el("pc-move-toggle");
 
-// Stable link under chart (optional but useful)
+// Stable link under chart (optional)
 const pcSaleLinkWrap = el("pc-sale-link-wrap");
 const pcSaleLink = el("pc-sale-link");
 
 // Hero
-const heroTitle = document.querySelector(".hero-title");
 const heroTitleTextEl = document.querySelector(".hero-title-text");
 const heroSub = document.querySelector(".hero-sub");
 const heroDot = el("hero-dot");
 
-const defaultHeroTitle = heroTitleTextEl ? heroTitleTextEl.textContent : (heroTitle ? heroTitle.textContent : "");
+const defaultHeroTitle = heroTitleTextEl ? heroTitleTextEl.textContent : "";
 const defaultHeroSub = heroSub ? heroSub.textContent : "";
 
 let lastRun = null;
 
+// We keep the *current* Plotly graph div here (returned by Plotly.newPlot)
+let currentGraphDiv = null;
+
 // ----- Hero helpers -----
 function setHeroForResults({ artistName, price, purchaseMonth }) {
   if (heroTitleTextEl) heroTitleTextEl.textContent = "My Artwork";
-  else if (heroTitle) heroTitle.textContent = "My Artwork";
-
   heroDot?.classList.remove("hidden");
 
   const parts = [artistName, fmtGBP0(price)];
@@ -79,8 +80,6 @@ function setHeroForResults({ artistName, price, purchaseMonth }) {
 
 function resetHero() {
   if (heroTitleTextEl) heroTitleTextEl.textContent = defaultHeroTitle;
-  else if (heroTitle) heroTitle.textContent = defaultHeroTitle;
-
   heroDot?.classList.add("hidden");
   if (heroSub) heroSub.textContent = defaultHeroSub;
 }
@@ -109,64 +108,85 @@ function showResults() {
   setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
 }
 
-// ----- Stable sale link helpers -----
+// ----- Stable link under chart -----
 function hideStableSaleLink() {
   pcSaleLinkWrap?.classList.add("hidden");
   if (pcSaleLink) pcSaleLink.href = "#";
 }
 function showStableSaleLink(url) {
   if (!pcSaleLinkWrap || !pcSaleLink) return;
-  if (url && typeof url === "string" && url.startsWith("http")) {
-    pcSaleLink.href = url;
+  const u = String(url || "").trim();
+  if (u && u.startsWith("http")) {
+    pcSaleLink.href = u;
     pcSaleLinkWrap.classList.remove("hidden");
   } else {
     hideStableSaleLink();
   }
 }
 
-// ----- Plotly interactivity (dot-click opens SaleURL) -----
-function bindLotInteractivityOnce() {
-  if (!pcUniverse) return;
-
-  // If plotly hasn't attached yet, pcUniverse.on will be undefined.
-  if (typeof pcUniverse.on !== "function") return;
-
-  if (pcUniverse.__pcInteractivityBound) return;
-  pcUniverse.__pcInteractivityBound = true;
-
-  pcUniverse.on("plotly_click", (ev) => {
-    const p = ev?.points?.[0];
-    const url = p?.customdata?.[2];
-    if (url && typeof url === "string" && url.startsWith("http")) {
-      window.open(url, "_blank", "noopener,noreferrer");
-    }
-  });
-
-  pcUniverse.on("plotly_hover", (ev) => {
-    const p = ev?.points?.[0];
-    showStableSaleLink(p?.customdata?.[2]);
-  });
-
-  pcUniverse.on("plotly_unhover", () => hideStableSaleLink());
-}
-
-// Highlight toggle
+// ----- Highlight toggle -----
 function setRankingHighlight(isOn) {
-  if (!pcUniverse?.data) return;
+  const gd = currentGraphDiv;
+  if (!gd?.data) return;
 
   const metas = ["pc_highlight_then", "pc_highlight_now"];
   const idxs = metas
-    .map((m) => pcUniverse.data.findIndex((t) => t?.meta === m))
+    .map((m) => gd.data.findIndex((t) => t?.meta === m))
     .filter((i) => i >= 0);
 
   if (!idxs.length) return;
-  Plotly.restyle(pcUniverse, { visible: isOn }, idxs);
+  Plotly.restyle(gd, { visible: isOn }, idxs);
 }
 
 function collapseMovePanel() {
   pcMoveToggle?.setAttribute("aria-expanded", "false");
   pcMove?.classList.add("hidden");
   setRankingHighlight(false);
+}
+
+// ----- CLICK BINDING (THE IMPORTANT BIT) -----
+// Bind to the actual graph div (gd) returned by Plotly.newPlot.
+// This avoids the “bound too early / bound to wrong node” failure.
+function bindGraphInteractivity(gd) {
+  if (!gd || typeof gd.on !== "function") return;
+
+  // Remove any old handlers if we replot
+  if (gd.__pcBound) return;
+  gd.__pcBound = true;
+
+  gd.on("plotly_click", (ev) => {
+    const p = ev?.points?.[0];
+
+    // robust url extraction
+    let url =
+      p?.customdata?.[2] ??
+      (Number.isInteger(p?.pointIndex) && p?.data?.customdata?.[p.pointIndex]?.[2]);
+
+    url = String(url || "").trim();
+
+    // tiny debug so you can confirm click is firing
+    // (remove later if you like)
+    console.log("plotly_click url:", url);
+
+    if (url && url.startsWith("http")) {
+      const w = window.open(url, "_blank", "noopener,noreferrer");
+
+      // If popup blocked, fall back to same tab
+      if (!w) {
+        window.location.href = url;
+      }
+    }
+  });
+
+  gd.on("plotly_hover", (ev) => {
+    const p = ev?.points?.[0];
+    const url =
+      p?.customdata?.[2] ??
+      (Number.isInteger(p?.pointIndex) && p?.data?.customdata?.[p.pointIndex]?.[2]);
+    showStableSaleLink(url);
+  });
+
+  gd.on("plotly_unhover", () => hideStableSaleLink());
 }
 
 // ----- Load CSV -----
@@ -195,11 +215,12 @@ file?.addEventListener("change", async (e) => {
       if (data.artists[0]) pcArtist.value = data.artists[0].id;
     }
 
-    pcRun && (pcRun.disabled = false);
+    if (pcRun) pcRun.disabled = false;
 
     lastRun = null;
     if (pcLogToggle) pcLogToggle.checked = false;
 
+    currentGraphDiv = null;
     hideStableSaleLink();
     collapseMovePanel();
     resetHero();
@@ -216,6 +237,7 @@ file?.addEventListener("change", async (e) => {
     if (pcRun) pcRun.disabled = true;
 
     lastRun = null;
+    currentGraphDiv = null;
     hideStableSaleLink();
     collapseMovePanel();
     resetHero();
@@ -252,11 +274,13 @@ function doRun({ scroll = true } = {}) {
     elChart: pcUniverse,
   });
 
-  // ✅ Bind ONLY after Plotly finished initialising
-  out?.plotPromise?.then(() => {
-    // allow rebind after replot
-    pcUniverse.__pcInteractivityBound = false;
-    bindLotInteractivityOnce();
+  // ✅ Plotly.newPlot resolves to the real graph div
+  out?.plotPromise?.then((gd) => {
+    currentGraphDiv = gd;
+
+    // allow re-bind after each replot
+    gd.__pcBound = false;
+    bindGraphInteractivity(gd);
   });
 
   lastRun = { artistId, price, myMonthYYYYMM: myMonth };
@@ -282,6 +306,7 @@ pcLogToggle?.addEventListener("change", () => {
   catch (err) { alert(err?.message || String(err)); }
 });
 
+// Movement toggle
 pcMoveToggle?.addEventListener("click", () => {
   const open = pcMoveToggle.getAttribute("aria-expanded") === "true";
   const next = !open;
@@ -294,8 +319,10 @@ pcMoveToggle?.addEventListener("click", () => {
   if (next) setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
 });
 
+// Back
 pcBack?.addEventListener("click", () => {
   lastRun = null;
+  currentGraphDiv = null;
   hideStableSaleLink();
   collapseMovePanel();
   resetHero();
