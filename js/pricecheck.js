@@ -1,4 +1,5 @@
 // js/pricecheck.js
+
 // ------------------------------------------------------------
 // LocationCode -> "Auction house · CITY" mapping (197 entries)
 // ------------------------------------------------------------
@@ -274,6 +275,98 @@ function quartileAverage(rows, qIndex){
   return band.reduce((a,b)=>a+b,0) / band.length;
 }
 
+// ------------------------------------------------------------
+// NEW: Month-capped weighting helpers for percentile transport
+// ------------------------------------------------------------
+function monthKeyUTC(d){
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  return `${y}${m}`;
+}
+
+function monthCountCapIQR(rows){
+  const counts = new Map();
+  for(const r of rows){
+    const k = monthKeyUTC(r.date);
+    counts.set(k, (counts.get(k) || 0) + 1);
+  }
+  const vals = Array.from(counts.values()).sort((a,b)=>a-b);
+  if(!vals.length) return 0;
+
+  const q1 = quantile(vals, 0.25);
+  const q3 = quantile(vals, 0.75);
+  const iqr = q3 - q1;
+  const upper = q3 + 1.5 * iqr;
+
+  // max non-outlier month count
+  let maxNon = 0;
+  for(const v of vals){
+    if(v <= upper) maxNon = v;
+  }
+  const cap = Math.max(1, Math.floor(maxNon || upper || vals[vals.length-1]));
+  return cap;
+}
+
+function applyMonthCapWeights(rows){
+  const counts = new Map();
+  for(const r of rows){
+    const k = monthKeyUTC(r.date);
+    counts.set(k, (counts.get(k) || 0) + 1);
+  }
+
+  const cap = monthCountCapIQR(rows);
+
+  return rows.map(r => {
+    const k = monthKeyUTC(r.date);
+    const c = counts.get(k) || 1;
+    const w = (c > cap) ? (cap / c) : 1;
+    return { ...r, _w: w };
+  });
+}
+
+function weightedPercentileRank(rowsW, v){
+  const xs = rowsW
+    .map(r => ({ x: r.price, w: r._w }))
+    .filter(o => Number.isFinite(o.x) && Number.isFinite(o.w) && o.w > 0)
+    .sort((a,b)=>a.x-b.x);
+
+  if(!xs.length || !Number.isFinite(v)) return NaN;
+
+  let totalW = 0;
+  for(const o of xs) totalW += o.w;
+  if(totalW <= 0) return NaN;
+
+  let cum = 0;
+  for(const o of xs){
+    if(o.x <= v) cum += o.w;
+    else break;
+  }
+  return (cum / totalW) * 100;
+}
+
+function weightedQuantile(rowsW, q){
+  const xs = rowsW
+    .map(r => ({ x: r.price, w: r._w }))
+    .filter(o => Number.isFinite(o.x) && Number.isFinite(o.w) && o.w > 0)
+    .sort((a,b)=>a.x-b.x);
+
+  if(!xs.length) return NaN;
+
+  q = Math.max(0, Math.min(1, q));
+
+  let totalW = 0;
+  for(const o of xs) totalW += o.w;
+  if(totalW <= 0) return NaN;
+
+  const target = q * totalW;
+  let cum = 0;
+  for(const o of xs){
+    cum += o.w;
+    if(cum >= target) return o.x;
+  }
+  return xs[xs.length - 1].x;
+}
+
 // Movement slider (CTA)
 function renderMovement(el, { price, equivNow, captionText = "" }){
   if(!el) return;
@@ -424,28 +517,48 @@ export function runPriceCheck({
     plot_bgcolor:"rgba(0,0,0,0)"
   }, {responsive:true, displayModeBar:false});
 
-  // stats
+  // ------------------------------------------------------------
+  // Percentile at purchase month (unchanged)
+  // ------------------------------------------------------------
   const thenUniverse = all.filter(r => r.date <= artworkDate);
   const thenPricesAll = thenUniverse.map(r=>r.price).sort((a,b)=>a-b);
   const pct = percentileRank(thenPricesAll, price);
 
+  // ------------------------------------------------------------
+  // NEW: Month-capped weighted percentile transport
+  // - build then/now windows
+  // - apply month-cap weights inside each window
+  // - compute weighted percentile of your price in THEN window
+  // - map that percentile into NOW window via weighted quantile
+  // - keep your conservative cap vs the input price
+  // ------------------------------------------------------------
   let equivNow = null;
+
   try{
     const thenRows = windowN(all, artworkDate, TRANSPORT_WINDOW_MONTHS);
     const nowRows  = windowN(all, latestDate,  TRANSPORT_WINDOW_MONTHS);
 
-    if(thenRows.length >= MIN_SALES_IN_WINDOW && nowRows.length >= MIN_SALES_IN_WINDOW && Number.isFinite(pct)){
-      const quartileIndex = Math.min(3, Math.floor(pct/25));
-      const avgThen = quartileAverage(thenRows, quartileIndex);
-      const avgNow  = quartileAverage(nowRows,  quartileIndex);
+    if(thenRows.length >= MIN_SALES_IN_WINDOW && nowRows.length >= MIN_SALES_IN_WINDOW){
+      const thenW = applyMonthCapWeights(thenRows);
+      const nowW  = applyMonthCapWeights(nowRows);
 
-      if(Number.isFinite(avgThen) && Number.isFinite(avgNow) && avgThen > 0){
-        let factor = (avgNow - avgThen) / avgThen;
-        const yearsElapsed = Math.max(1, (latestDate - artworkDate) / (365*24*60*60*1000));
-        const maxMove = Math.min(0.25, 0.05 * yearsElapsed);
-        if(factor >  maxMove) factor =  maxMove;
-        if(factor < -maxMove) factor = -maxMove;
-        equivNow = price * (1 + factor);
+      const pThen = weightedPercentileRank(thenW, price); // 0..100
+
+      if(Number.isFinite(pThen)){
+        const mappedNow = weightedQuantile(nowW, pThen / 100);
+
+        if(Number.isFinite(mappedNow) && mappedNow > 0){
+          // Conservative cap (keep your existing behaviour)
+          let factor = (mappedNow - price) / price;
+
+          const yearsElapsed = Math.max(1, (latestDate - artworkDate) / (365*24*60*60*1000));
+          const maxMove = Math.min(0.25, 0.05 * yearsElapsed);
+
+          if(factor >  maxMove) factor =  maxMove;
+          if(factor < -maxMove) factor = -maxMove;
+
+          equivNow = price * (1 + factor);
+        }
       }
     }
   } catch(e){
@@ -459,7 +572,8 @@ export function runPriceCheck({
         price,
         equivNow,
         captionText:
-          "Indicative value today is estimated by re-ranking your price against the artist’s most recent 24 months of auction sales."
+          "Indicative value today is estimated by re-ranking your price against the artist’s most recent 24 months of auction sales, " +
+          "with months capped so unusually high-sale months do not dominate the distribution."
       });
     } else {
       moveEl.innerHTML = "";
@@ -472,4 +586,3 @@ export function runPriceCheck({
 
   return { pct, equivNow, plotPromise };
 }
-
