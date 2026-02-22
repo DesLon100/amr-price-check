@@ -73,34 +73,20 @@
           </div>
         </div>
 
-        <!-- Investor-safe sentence (directly under toggle) -->
+        <!-- Valuer-facing explanation -->
         <div class="pc-section">
-          <h3 class="pc-section-title">How This Price Typically Performs</h3>
+          <h3 class="pc-section-title">Fair Market Value Movement</h3>
+
+          <!-- Option 1: leave empty and let JS populate -->
           <div id="pc-context-text" class="pc-context-text"></div>
-        </div>
 
-        <!-- Show clearing bands (below investor-safe sentence) -->
-        <div class="pc-context">
-          <button
-            id="pc-bands-toggle"
-            class="pc-bands-toggle"
-            type="button"
-            aria-expanded="false">
-            <span>Show clearing bands</span>
-            <span class="chev">▾</span>
-          </button>
-        </div>
-
-        <!-- Collapsible clearing bands -->
-        <div id="pc-bands" class="pc-bands hidden">
-          <div id="pc-bands-chart" class="pc-bands-chart"></div>
-
-          <div class="pc-bands-legend">
-            <span class="dot dot-your"></span> Your price
-            <span class="dot dot-equiv" style="margin-left:14px;"></span> Equivalent level today
+          <!-- Option 2 (hard-code instead): replace the div above with this:
+          <div class="pc-context-text">
+            We re-rank your acquisition price against the artist’s most recent 24 months of auction sales.
+            If fewer works now sell above that level, fair market value has likely increased; if more works sell above it,
+            fair market value has likely decreased.
           </div>
-
-          <div id="pc-bands-caption" class="pc-bands-caption"></div>
+          -->
         </div>
 
         <!-- Back button -->
