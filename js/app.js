@@ -12,7 +12,6 @@ const escapeHtml = (s) =>
     "'": "&#039;",
   }[m]));
 
-// ---------- formatting ----------
 function fmtGBP0(x) {
   const n = Number(x);
   if (!Number.isFinite(n)) return "—";
@@ -29,10 +28,11 @@ function fmtYYYYMMLabel(yyyymm) {
   return d.toLocaleString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
 }
 
-// ---------- elements ----------
+// Top bar
 const file = el("file");
 const status = el("status");
 
+// Price check elements
 const pcFormCard = el("pc-form-card");
 const pcArtist = el("pc-artist");
 const pcPrice = el("pc-price");
@@ -44,7 +44,12 @@ const pcUniverse = el("pc-universe");
 const pcLogToggle = el("pc-log");
 const pcBack = el("pc-back");
 
+// Context + movement panel
 const pcContextText = el("pc-context-text");
+const pcMove = el("pc-move");
+const pcMoveToggle = el("pc-move-toggle");
+
+let lastRun = null;
 
 // Hero
 const heroTitle = document.querySelector(".hero-title");
@@ -52,10 +57,6 @@ const heroSub = document.querySelector(".hero-sub");
 const defaultHeroTitle = heroTitle ? heroTitle.textContent : "";
 const defaultHeroSub = heroSub ? heroSub.textContent : "";
 
-// state
-let lastRun = null;
-
-// ---------- hero helpers ----------
 function setHeroForResults({ artistName, price, purchaseMonth }) {
   if (heroTitle) heroTitle.textContent = "My Artwork";
 
@@ -71,7 +72,15 @@ function resetHero() {
   if (heroSub) heroSub.textContent = defaultHeroSub;
 }
 
-// ---------- view helpers ----------
+function setFMVContextCopy() {
+  if (!pcContextText) return;
+  pcContextText.textContent =
+    "We re-rank your acquisition price against the artist’s most recent 24 months of auction sales. " +
+    "If fewer works now sell above that level, fair market value has likely increased; " +
+    "if more works sell above it, fair market value has likely decreased.";
+}
+
+// ----- Helpers -----
 function showForm() {
   pcFormCard?.classList.remove("hidden");
   pcResults?.classList.add("hidden");
@@ -85,57 +94,12 @@ function showResults() {
   setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
 }
 
-function setFMVContextCopy() {
-  if (!pcContextText) return;
-  pcContextText.textContent =
-    "We re-rank your acquisition price against the artist’s most recent 24 months of auction sales. " +
-    "If fewer works now sell above that level, fair market value has likely increased; " +
-    "if more works sell above it, fair market value has likely decreased.";
+function collapseMovePanel() {
+  pcMoveToggle?.setAttribute("aria-expanded", "false");
+  pcMove?.classList.add("hidden");
 }
 
-// ---------- run ----------
-function doRun({ scroll = true } = {}) {
-  const data = window.__pcData;
-  if (!data) return alert("Load data first.");
-
-  const artistId = pcArtist?.value || "";
-  const price = Number(pcPrice?.value);
-
-  if (!artistId) return alert("Select an artist.");
-  if (!Number.isFinite(price) || price <= 0) return alert("Enter a valid price.");
-
-  const myMonth = (pcMonth?.value || "").trim();
-  const yScale = pcLogToggle?.checked ? "log" : "linear";
-
-  const wbLite = {
-    getLotRows: () => data.lotRows,
-    getArtistName: (id) => data.getArtistName(id),
-    getMetrics: (_id) => null,
-  };
-
-  runPriceCheck({
-    workbench: wbLite,
-    artistId,
-    price,
-    myMonthYYYYMM: myMonth,
-    yScale,
-    elChart: pcUniverse,
-  });
-
-  lastRun = { artistId, price, myMonthYYYYMM: myMonth };
-
-  // Hero changes only after Check price
-  const artistName = data.getArtistName(artistId);
-  setHeroForResults({ artistName, price, purchaseMonth: myMonth });
-
-  setFMVContextCopy();
-
-  if (scroll) showResults();
-}
-
-// ---------- events ----------
-
-// Load CSV
+// ----- Load CSV -----
 file?.addEventListener("change", async (e) => {
   const f = e.target.files?.[0];
   if (!f) return;
@@ -163,48 +127,100 @@ file?.addEventListener("change", async (e) => {
 
     if (pcRun) pcRun.disabled = false;
 
+    // Reset view/state
     lastRun = null;
     if (pcLogToggle) pcLogToggle.checked = false;
-
+    collapseMovePanel();
     resetHero();
     setFMVContextCopy();
     showForm();
   } catch (err) {
     alert(err?.message || String(err));
+
     if (status) status.textContent = "No dataset loaded.";
     if (pcArtist) {
       pcArtist.disabled = true;
       pcArtist.innerHTML = `<option value="">Load data first…</option>`;
     }
     if (pcRun) pcRun.disabled = true;
+
     lastRun = null;
+    collapseMovePanel();
     resetHero();
     showForm();
   }
 });
 
-// Run button
+// ----- Run Price Check -----
+function doRun({ scroll = true } = {}) {
+  const artistId = pcArtist?.value || "";
+  const price = Number(pcPrice?.value);
+
+  if (!artistId) return alert("Select an artist.");
+  if (!Number.isFinite(price) || price <= 0) return alert("Enter a valid price.");
+
+  const data = window.__pcData;
+  if (!data) return alert("Load data first.");
+
+  const myMonth = (pcMonth?.value || "").trim();
+  const yScale = pcLogToggle?.checked ? "log" : "linear";
+
+  const wbLite = {
+    getLotRows: () => data.lotRows,
+    getArtistName: (id) => data.getArtistName(id),
+    getMetrics: (_id) => null,
+  };
+
+  runPriceCheck({
+    workbench: wbLite,
+    artistId,
+    price,
+    myMonthYYYYMM: myMonth,
+    yScale,
+    elChart: pcUniverse,
+  });
+
+  lastRun = { artistId, price, myMonthYYYYMM: myMonth };
+
+  // Hero ONLY after pressing Check price
+  const artistName = data.getArtistName(artistId);
+  setHeroForResults({ artistName, price, purchaseMonth: myMonth });
+
+  setFMVContextCopy();
+
+  // Keep movement panel collapsed by default each run (CTA remains)
+  collapseMovePanel();
+
+  if (scroll) showResults();
+}
+
 pcRun?.addEventListener("click", () => {
-  try {
-    doRun({ scroll: true });
-  } catch (err) {
-    alert(err?.message || String(err));
-  }
+  try { doRun({ scroll: true }); }
+  catch (err) { alert(err?.message || String(err)); }
 });
 
-// Log toggle (re-run to redraw)
+// ----- Toggle y-scale (re-run) -----
 pcLogToggle?.addEventListener("change", () => {
   if (!lastRun) return;
-  try {
-    doRun({ scroll: false });
-  } catch (err) {
-    alert(err?.message || String(err));
+  try { doRun({ scroll: false }); }
+  catch (err) { alert(err?.message || String(err)); }
+});
+
+// ----- Movement toggle (CTA) -----
+pcMoveToggle?.addEventListener("click", () => {
+  const open = pcMoveToggle.getAttribute("aria-expanded") === "true";
+  pcMoveToggle.setAttribute("aria-expanded", String(!open));
+  pcMove?.classList.toggle("hidden", open);
+
+  if (open === false) {
+    setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
   }
 });
 
-// Back
+// ----- Back -----
 pcBack?.addEventListener("click", () => {
   lastRun = null;
+  collapseMovePanel();
   resetHero();
   showForm();
 });
