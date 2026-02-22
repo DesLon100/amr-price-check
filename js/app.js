@@ -28,32 +28,26 @@ function fmtYYYYMMLabel(yyyymm) {
   return d.toLocaleString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
 }
 
-// Top bar
+// elements
 const file = el("file");
 const status = el("status");
 
-// Form
 const pcFormCard = el("pc-form-card");
 const pcArtist = el("pc-artist");
 const pcPrice = el("pc-price");
 const pcMonth = el("pc-month");
 const pcRun = el("pc-run");
 
-// Results
 const pcResults = el("pc-results");
 const pcUniverse = el("pc-universe");
 const pcLogToggle = el("pc-log");
 const pcBack = el("pc-back");
 
-// Context + movement panel
 const pcContextText = el("pc-context-text");
 const pcMove = el("pc-move");
 const pcMoveToggle = el("pc-move-toggle");
 
-let lastRun = null;
-let currentGraphDiv = null;
-
-// Hero
+// hero
 const heroTitleTextEl = document.querySelector(".hero-title-text");
 const heroSub = document.querySelector(".hero-sub");
 const heroDot = el("hero-dot");
@@ -61,7 +55,9 @@ const heroDot = el("hero-dot");
 const defaultHeroTitle = heroTitleTextEl ? heroTitleTextEl.textContent : "";
 const defaultHeroSub = heroSub ? heroSub.textContent : "";
 
-// Hero helpers
+let lastRun = null;
+let currentGraphDiv = null;
+
 function setHeroForResults({ artistName, price, purchaseMonth }) {
   if (heroTitleTextEl) heroTitleTextEl.textContent = "My Artwork";
   heroDot?.classList.remove("hidden");
@@ -78,7 +74,6 @@ function resetHero() {
   if (heroSub) heroSub.textContent = defaultHeroSub;
 }
 
-// Context copy
 function setFMVContextCopy() {
   if (!pcContextText) return;
   pcContextText.textContent =
@@ -87,7 +82,6 @@ function setFMVContextCopy() {
     "if more works sell above it, fair market value has likely decreased.";
 }
 
-// View helpers
 function showForm() {
   pcFormCard?.classList.remove("hidden");
   pcResults?.classList.add("hidden");
@@ -101,7 +95,6 @@ function showResults() {
   setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
 }
 
-// Highlight toggle (both windows)
 function setRankingHighlight(isOn) {
   const gd = currentGraphDiv;
   if (!gd?.data) return;
@@ -121,38 +114,22 @@ function collapseMovePanel() {
   setRankingHighlight(false);
 }
 
-// Bind click to open sale URL
+// bind click → open url
 function bindGraphClickOnce(gd) {
   if (!gd || gd.__pcClickBound) return;
   gd.__pcClickBound = true;
 
   gd.on("plotly_click", (ev) => {
-  const p = ev?.points?.[0];
+    const p = ev?.points?.[0];
+    const url = String(p?.customdata?.[2] ?? "").trim();
+    if (!url || !url.startsWith("http")) return;
 
-  console.log("CLICK fired", {
-    traceMeta: p?.data?.meta,
-    pointIndex: p?.pointIndex,
-    customdata: p?.customdata,
+    const w = window.open(url, "_blank", "noopener,noreferrer");
+    if (!w) window.location.href = url;
   });
-
-  let url =
-    p?.customdata?.[2] ??
-    (Number.isInteger(p?.pointIndex) && p?.data?.customdata?.[p.pointIndex]?.[2]);
-
-  url = String(url || "").trim();
-  console.log("URL resolved:", url);
-
-  if (!url || !url.startsWith("http")) {
-    alert("No SaleURL found for this point.");
-    return;
-  }
-
-  const w = window.open(url, "_blank", "noopener,noreferrer");
-  if (!w) window.location.href = url; // popup blocked fallback
-});
 }
 
-// Load CSV
+// load CSV
 file?.addEventListener("change", async (e) => {
   const f = e.target.files?.[0];
   if (!f) return;
@@ -206,7 +183,6 @@ file?.addEventListener("change", async (e) => {
   }
 });
 
-// Run
 function doRun({ scroll = true } = {}) {
   const artistId = pcArtist?.value || "";
   const price = Number(pcPrice?.value);
@@ -235,18 +211,15 @@ function doRun({ scroll = true } = {}) {
     elChart: pcUniverse,
   });
 
-  // wait for plotly to finish, then bind click on the real graph div
   out?.plotPromise?.then((gd) => {
     currentGraphDiv = gd;
-    gd.__pcClickBound = false; // allow rebind after each newPlot
+    gd.__pcClickBound = false;     // allow rebind after replot
     bindGraphClickOnce(gd);
   });
 
   lastRun = { artistId, price, myMonthYYYYMM: myMonth };
 
-  const artistName = data.getArtistName(artistId);
-  setHeroForResults({ artistName, price, purchaseMonth: myMonth });
-
+  setHeroForResults({ artistName: data.getArtistName(artistId), price, purchaseMonth: myMonth });
   setFMVContextCopy();
   collapseMovePanel();
 
@@ -264,20 +237,15 @@ pcLogToggle?.addEventListener("change", () => {
   catch (err) { alert(err?.message || String(err)); }
 });
 
-// Movement toggle (CTA)
 pcMoveToggle?.addEventListener("click", () => {
   const open = pcMoveToggle.getAttribute("aria-expanded") === "true";
   const next = !open;
-
   pcMoveToggle.setAttribute("aria-expanded", String(next));
   pcMove?.classList.toggle("hidden", open);
-
   setRankingHighlight(next);
-
   if (next) setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
 });
 
-// Back
 pcBack?.addEventListener("click", () => {
   lastRun = null;
   currentGraphDiv = null;
