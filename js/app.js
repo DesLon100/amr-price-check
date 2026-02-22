@@ -103,7 +103,7 @@ function bindLotClickOnce() {
 
   pcUniverse.on("plotly_click", (ev) => {
     const p = ev?.points?.[0];
-    // customdata = [LocationCode, LotNo, SaleURL]
+    // customdata = [AuctionHouse·City, LotNo, SaleURL]
     const url = p?.customdata?.[2];
     if (url && typeof url === "string") {
       window.open(url, "_blank", "noopener,noreferrer");
