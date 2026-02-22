@@ -1,6 +1,6 @@
 // js/app.js
--import { runPriceCheck, setPriceCheckScale } from "./pricecheck.js";
-+import { runPriceCheck } from "./pricecheck.js";
+import { runPriceCheck } from "./pricecheck.js";
+import { loadPriceCheckCSV } from "./data.js";
 
 const el = (id) => document.getElementById(id);
 const escapeHtml = (s) =>
@@ -12,7 +12,7 @@ const escapeHtml = (s) =>
     "'": "&#039;",
   }[m]));
 
-// ---- Format helpers ----
+// ---------- formatting ----------
 function fmtGBP0(x) {
   const n = Number(x);
   if (!Number.isFinite(n)) return "—";
@@ -29,11 +29,10 @@ function fmtYYYYMMLabel(yyyymm) {
   return d.toLocaleString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
 }
 
-// ---- Top bar ----
+// ---------- elements ----------
 const file = el("file");
 const status = el("status");
 
-// ---- Price check elements ----
 const pcFormCard = el("pc-form-card");
 const pcArtist = el("pc-artist");
 const pcPrice = el("pc-price");
@@ -45,17 +44,18 @@ const pcUniverse = el("pc-universe");
 const pcLogToggle = el("pc-log");
 const pcBack = el("pc-back");
 
-// Context text (under chart)
 const pcContextText = el("pc-context-text");
 
-let lastRun = null;
-
-// ---- Hero behaviour (changes ONLY after Check price) ----
+// Hero
 const heroTitle = document.querySelector(".hero-title");
 const heroSub = document.querySelector(".hero-sub");
 const defaultHeroTitle = heroTitle ? heroTitle.textContent : "";
 const defaultHeroSub = heroSub ? heroSub.textContent : "";
 
+// state
+let lastRun = null;
+
+// ---------- hero helpers ----------
 function setHeroForResults({ artistName, price, purchaseMonth }) {
   if (heroTitle) heroTitle.textContent = "My Artwork";
 
@@ -71,17 +71,7 @@ function resetHero() {
   if (heroSub) heroSub.textContent = defaultHeroSub;
 }
 
-// ---- Context copy (valuer-facing) ----
-function setFMVContextCopy() {
-  if (!pcContextText) return;
-  // Keep this aligned to the method in pricecheck.js:
-  pcContextText.textContent =
-    "We re-rank your acquisition price against the artist’s most recent 24 months of auction sales. " +
-    "If fewer works now sell above that level, fair market value has likely increased; " +
-    "if more works sell above it, fair market value has likely decreased.";
-}
-
-// ---- View helpers ----
+// ---------- view helpers ----------
 function showForm() {
   pcFormCard?.classList.remove("hidden");
   pcResults?.classList.add("hidden");
@@ -95,7 +85,57 @@ function showResults() {
   setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
 }
 
-// ----- Load CSV -----
+function setFMVContextCopy() {
+  if (!pcContextText) return;
+  pcContextText.textContent =
+    "We re-rank your acquisition price against the artist’s most recent 24 months of auction sales. " +
+    "If fewer works now sell above that level, fair market value has likely increased; " +
+    "if more works sell above it, fair market value has likely decreased.";
+}
+
+// ---------- run ----------
+function doRun({ scroll = true } = {}) {
+  const data = window.__pcData;
+  if (!data) return alert("Load data first.");
+
+  const artistId = pcArtist?.value || "";
+  const price = Number(pcPrice?.value);
+
+  if (!artistId) return alert("Select an artist.");
+  if (!Number.isFinite(price) || price <= 0) return alert("Enter a valid price.");
+
+  const myMonth = (pcMonth?.value || "").trim();
+  const yScale = pcLogToggle?.checked ? "log" : "linear";
+
+  const wbLite = {
+    getLotRows: () => data.lotRows,
+    getArtistName: (id) => data.getArtistName(id),
+    getMetrics: (_id) => null,
+  };
+
+  runPriceCheck({
+    workbench: wbLite,
+    artistId,
+    price,
+    myMonthYYYYMM: myMonth,
+    yScale,
+    elChart: pcUniverse,
+  });
+
+  lastRun = { artistId, price, myMonthYYYYMM: myMonth };
+
+  // Hero changes only after Check price
+  const artistName = data.getArtistName(artistId);
+  setHeroForResults({ artistName, price, purchaseMonth: myMonth });
+
+  setFMVContextCopy();
+
+  if (scroll) showResults();
+}
+
+// ---------- events ----------
+
+// Load CSV
 file?.addEventListener("change", async (e) => {
   const f = e.target.files?.[0];
   if (!f) return;
@@ -123,69 +163,27 @@ file?.addEventListener("change", async (e) => {
 
     if (pcRun) pcRun.disabled = false;
 
-    // reset state
     lastRun = null;
     if (pcLogToggle) pcLogToggle.checked = false;
+
     resetHero();
     setFMVContextCopy();
     showForm();
   } catch (err) {
     alert(err?.message || String(err));
-
     if (status) status.textContent = "No dataset loaded.";
     if (pcArtist) {
       pcArtist.disabled = true;
       pcArtist.innerHTML = `<option value="">Load data first…</option>`;
     }
     if (pcRun) pcRun.disabled = true;
-
     lastRun = null;
     resetHero();
     showForm();
   }
 });
 
-// ----- Run Price Check -----
-function doRun({ scroll = true } = {}) {
-  const artistId = pcArtist?.value || "";
-  const price = Number(pcPrice?.value);
-
-  if (!artistId) return alert("Select an artist.");
-  if (!Number.isFinite(price) || price <= 0) return alert("Enter a valid price.");
-
-  const data = window.__pcData;
-  if (!data) return alert("Load data first.");
-
-  const myMonth = (pcMonth?.value || "").trim();
-  const yScale = pcLogToggle?.checked ? "log" : "linear";
-
-  const wbLite = {
-    getLotRows: () => data.lotRows,
-    getArtistName: (id) => data.getArtistName(id),
-    getMetrics: (_id) => null,
-  };
-
-  // runPriceCheck now never blocks chart rendering for window insufficiency
-  runPriceCheck({
-    workbench: wbLite,
-    artistId,
-    price,
-    myMonthYYYYMM: myMonth,
-    yScale,
-    elChart: pcUniverse,
-  });
-
-  lastRun = { artistId, price, myMonthYYYYMM: myMonth };
-
-  // Hero updates ONLY after pressing Check price
-  const artistName = data.getArtistName(artistId);
-  setHeroForResults({ artistName, price, purchaseMonth: myMonth });
-
-  setFMVContextCopy();
-
-  if (scroll) showResults();
-}
-
+// Run button
 pcRun?.addEventListener("click", () => {
   try {
     doRun({ scroll: true });
@@ -194,28 +192,19 @@ pcRun?.addEventListener("click", () => {
   }
 });
 
-// ----- Toggle y-scale (re-run to redraw) -----
+// Log toggle (re-run to redraw)
 pcLogToggle?.addEventListener("change", () => {
   if (!lastRun) return;
--  setPriceCheckScale(pcUniverse, pcLogToggle.checked ? "log" : "linear");
-+  // Re-run to redraw with new y scale
-+  const data = window.__pcData;
-+  if (!data) return;
-+  const wbLite = {
-+    getLotRows: () => data.lotRows,
-+    getArtistName: (id) => data.getArtistName(id),
-+    getMetrics: (_id) => null,
-+  };
-+  try {
-+    runPriceCheck({
-+      workbench: wbLite,
-+      artistId: lastRun.artistId,
-+      price: lastRun.price,
-+      myMonthYYYYMM: lastRun.myMonthYYYYMM,
-+      yScale: pcLogToggle.checked ? "log" : "linear",
-+      elChart: pcUniverse,
-+    });
-+  } catch (err) {
-+    alert(err?.message || String(err));
-+  }
+  try {
+    doRun({ scroll: false });
+  } catch (err) {
+    alert(err?.message || String(err));
+  }
+});
+
+// Back
+pcBack?.addEventListener("click", () => {
+  lastRun = null;
+  resetHero();
+  showForm();
 });
