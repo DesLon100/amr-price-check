@@ -57,18 +57,29 @@ const pcMoveToggle = el("pc-move-toggle");
 const pcSaleLinkWrap = el("pc-sale-link-wrap");
 const pcSaleLink = el("pc-sale-link");
 
-let lastRun = null;
-
 // Hero
 const heroTitle = document.querySelector(".hero-title");
+const heroTitleTextEl = document.querySelector(".hero-title-text"); // NEW (if you added span)
 const heroSub = document.querySelector(".hero-sub");
-const defaultHeroTitle = heroTitle ? heroTitle.textContent : "";
+const heroDot = el("hero-dot"); // NEW (the small dot next to title)
+
+const defaultHeroTitle = heroTitleTextEl
+  ? heroTitleTextEl.textContent
+  : (heroTitle ? heroTitle.textContent : "");
 const defaultHeroSub = heroSub ? heroSub.textContent : "";
 
-// Hero helpers
-function setHeroForResults({ artistName, price, purchaseMonth }) {
-  if (heroTitle) heroTitle.textContent = "My Artwork";
+let lastRun = null;
 
+// ----- Hero helpers -----
+function setHeroForResults({ artistName, price, purchaseMonth }) {
+  // Title text
+  if (heroTitleTextEl) heroTitleTextEl.textContent = "My Artwork";
+  else if (heroTitle) heroTitle.textContent = "My Artwork"; // fallback if you didn't add span
+
+  // Show dot
+  heroDot?.classList.remove("hidden");
+
+  // Subtitle line
   const parts = [artistName, fmtGBP0(price)];
   const monthLabel = fmtYYYYMMLabel(purchaseMonth);
   if (monthLabel) parts.push(monthLabel);
@@ -77,7 +88,11 @@ function setHeroForResults({ artistName, price, purchaseMonth }) {
 }
 
 function resetHero() {
-  if (heroTitle) heroTitle.textContent = defaultHeroTitle;
+  if (heroTitleTextEl) heroTitleTextEl.textContent = defaultHeroTitle;
+  else if (heroTitle) heroTitle.textContent = defaultHeroTitle;
+
+  heroDot?.classList.add("hidden");
+
   if (heroSub) heroSub.textContent = defaultHeroSub;
 }
 
