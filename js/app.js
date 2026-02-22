@@ -96,26 +96,32 @@ function showResults() {
   setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
 }
 
-// ---------- Scatter click-through ----------
+// ---------- Scatter click-through (SaleURL) ----------
 function bindLotClickOnce() {
   if (!pcUniverse || pcUniverse.__pcLotClickBound) return;
   pcUniverse.__pcLotClickBound = true;
 
   pcUniverse.on("plotly_click", (ev) => {
     const p = ev?.points?.[0];
-    const url = p?.customdata?.[3];
+    // customdata = [LocationCode, LotNo, SaleURL]
+    const url = p?.customdata?.[2];
     if (url && typeof url === "string") {
       window.open(url, "_blank", "noopener,noreferrer");
     }
   });
 }
 
-// ---------- Highlight toggle ----------
+// ---------- Highlight toggle (then + now windows) ----------
 function setRankingHighlight(isOn) {
   if (!pcUniverse?.data) return;
-  const idx = pcUniverse.data.findIndex((t) => t?.meta === "pc_highlight_now");
-  if (idx < 0) return;
-  Plotly.restyle(pcUniverse, { visible: isOn }, [idx]);
+
+  const ids = ["pc_highlight_then", "pc_highlight_now"];
+  const idxs = ids
+    .map((meta) => pcUniverse.data.findIndex((t) => t?.meta === meta))
+    .filter((i) => i >= 0);
+
+  if (!idxs.length) return;
+  Plotly.restyle(pcUniverse, { visible: isOn }, idxs);
 }
 
 function collapseMovePanel() {
@@ -248,7 +254,7 @@ pcMoveToggle?.addEventListener("click", () => {
   pcMoveToggle.setAttribute("aria-expanded", String(next));
   pcMove?.classList.toggle("hidden", open);
 
-  // Highlight ranking-window points when panel is open
+  // Highlight BOTH ranking-window sets when panel is open
   setRankingHighlight(next);
 
   if (next) {
