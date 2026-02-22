@@ -277,95 +277,12 @@ function quartileAverage(rows, qIndex){
 
 // ------------------------------------------------------------
 // NEW: Month-capped weighting helpers for percentile transport
-// (kept for compatibility, no longer used by transport method)
+// (kept for compatibility; no longer used by transport method)
 // ------------------------------------------------------------
 function monthKeyUTC(d){
   const y = d.getUTCFullYear();
   const m = String(d.getUTCMonth() + 1).padStart(2, "0");
   return `${y}${m}`;
-}
-
-function monthCountCapIQR(rows){
-  const counts = new Map();
-  for(const r of rows){
-    const k = monthKeyUTC(r.date);
-    counts.set(k, (counts.get(k) || 0) + 1);
-  }
-  const vals = Array.from(counts.values()).sort((a,b)=>a-b);
-  if(!vals.length) return 0;
-
-  const q1 = quantile(vals, 0.25);
-  const q3 = quantile(vals, 0.75);
-  const iqr = q3 - q1;
-  const upper = q3 + 1.5 * iqr;
-
-  // max non-outlier month count
-  let maxNon = 0;
-  for(const v of vals){
-    if(v <= upper) maxNon = v;
-  }
-  const cap = Math.max(1, Math.floor(maxNon || upper || vals[vals.length-1]));
-  return cap;
-}
-
-function applyMonthCapWeights(rows){
-  const counts = new Map();
-  for(const r of rows){
-    const k = monthKeyUTC(r.date);
-    counts.set(k, (counts.get(k) || 0) + 1);
-  }
-
-  const cap = monthCountCapIQR(rows);
-
-  return rows.map(r => {
-    const k = monthKeyUTC(r.date);
-    const c = counts.get(k) || 1;
-    const w = (c > cap) ? (cap / c) : 1;
-    return { ...r, _w: w };
-  });
-}
-
-function weightedPercentileRank(rowsW, v){
-  const xs = rowsW
-    .map(r => ({ x: r.price, w: r._w }))
-    .filter(o => Number.isFinite(o.x) && Number.isFinite(o.w) && o.w > 0)
-    .sort((a,b)=>a.x-b.x);
-
-  if(!xs.length || !Number.isFinite(v)) return NaN;
-
-  let totalW = 0;
-  for(const o of xs) totalW += o.w;
-  if(totalW <= 0) return NaN;
-
-  let cum = 0;
-  for(const o of xs){
-    if(o.x <= v) cum += o.w;
-    else break;
-  }
-  return (cum / totalW) * 100;
-}
-
-function weightedQuantile(rowsW, q){
-  const xs = rowsW
-    .map(r => ({ x: r.price, w: r._w }))
-    .filter(o => Number.isFinite(o.x) && Number.isFinite(o.w) && o.w > 0)
-    .sort((a,b)=>a.x-b.x);
-
-  if(!xs.length) return NaN;
-
-  q = Math.max(0, Math.min(1, q));
-
-  let totalW = 0;
-  for(const o of xs) totalW += o.w;
-  if(totalW <= 0) return NaN;
-
-  const target = q * totalW;
-  let cum = 0;
-  for(const o of xs){
-    cum += o.w;
-    if(cum >= target) return o.x;
-  }
-  return xs[xs.length - 1].x;
 }
 
 // ------------------------------------------------------------
@@ -377,7 +294,6 @@ function monthStartUTC(d){
 }
 
 function monthIndexUTC(d){
-  // Unique month integer: y*12 + m (0-based month)
   return d.getUTCFullYear() * 12 + d.getUTCMonth();
 }
 
@@ -398,7 +314,6 @@ function buildMonthRangeUTC(minDate, maxDate){
 }
 
 function ols(xs, ys){
-  // Returns {a, b} for y = a + b*x
   const n = xs.length;
   if(n < 2) return null;
 
@@ -475,10 +390,12 @@ export function runPriceCheck({
   const latestDate  = all[all.length-1].date;
 
   const TRANSPORT_WINDOW_MONTHS = 24;
-  const MIN_SALES_IN_WINDOW = 30; // per your spec
+  const MIN_SALES_IN_WINDOW = 30;
 
-  const thenRowsHighlight = windowN(all, artworkDate, TRANSPORT_WINDOW_MONTHS);
-  const nowRowsHighlight  = windowN(all, latestDate,  TRANSPORT_WINDOW_MONTHS);
+  // (still used for "highlight windows" calculations elsewhere, but we are removing
+  // the orange highlight traces entirely)
+  const thenRowsHighlight = windowN(all, monthStartUTC(artworkDate), TRANSPORT_WINDOW_MONTHS);
+  const nowRowsHighlight  = windowN(all, monthStartUTC(latestDate),  TRANSPORT_WINDOW_MONTHS);
 
   const x = all.map(r=>r.date);
   const y = all.map(r=>r.price);
@@ -496,82 +413,37 @@ export function runPriceCheck({
     "Lot %{customdata[1]}" +
     "<extra>Click dot to open sale</extra>";
 
+  // Make dots much lighter so lines read clearly
   const baseTrace = {
     x, y, customdata,
     type:"scattergl",
     mode:"markers",
-    marker:{size:6, color:"#2f3b63"},
+    marker:{size:6, color:"rgba(47,59,99,0.18)"},
     hovertemplate,
     showlegend:false,
     meta:"pc_base"
   };
 
-  const ORANGE_THEN = "#f6bd74";
-  const ORANGE_NOW  = "#f4a261";
-
-  const thenTrace = {
-    x: thenRowsHighlight.map(r=>r.date),
-    y: thenRowsHighlight.map(r=>r.price),
-    customdata: thenRowsHighlight.map(r => [
-      locationLabel(getLocationCode(r)),
-      getLotNo(r),
-      getSaleURL(r)
-    ]),
-    type:"scattergl",
-    mode:"markers",
-    marker:{size:7, color: ORANGE_THEN},
-    hovertemplate,
-    visible:false,
-    showlegend:false,
-    meta:"pc_highlight_then"
-  };
-
-  const nowTrace = {
-    x: nowRowsHighlight.map(r=>r.date),
-    y: nowRowsHighlight.map(r=>r.price),
-    customdata: nowRowsHighlight.map(r => [
-      locationLabel(getLocationCode(r)),
-      getLotNo(r),
-      getSaleURL(r)
-    ]),
-    type:"scattergl",
-    mode:"markers",
-    marker:{size:7, color: ORANGE_NOW},
-    hovertemplate,
-    visible:false,
-    showlegend:false,
-    meta:"pc_highlight_now"
-  };
-
   // ------------------------------------------------------------
-  // NEW: 24M rolling p50 + regression line + optional "my percentile" line
-  // (kept visually minimal; no legend)
+  // 24M rolling p50 + regression line + optional "my percentile" line
   // ------------------------------------------------------------
   const months = buildMonthRangeUTC(all[0].date, all[all.length-1].date);
 
-  // Precompute month-start for each row to make 24M windows stable
-  const allM = all.map(r => ({
-    ...r,
-    _m: monthStartUTC(r.date)
-  }));
+  const allM = all.map(r => ({ ...r, _m: monthStartUTC(r.date) }));
 
-  // Two pointers over month-sorted rows
   let startPtr = 0;
   let endPtr = 0;
 
   const p50Dates = [];
   const p50Vals = [];
-  const p50T = []; // month index (0..)
-  const monthToT = new Map(); // key yyyy-mm -> t
+  const p50T = [];
+  const monthToT = new Map();
 
-  // Build rolling p50 series
   for(let i=0;i<months.length;i++){
     const endMonth = months[i];
     const startMonth = addMonthsUTC(endMonth, -(TRANSPORT_WINDOW_MONTHS - 1));
 
-    // advance endPtr: include rows with month <= endMonth
     while(endPtr < allM.length && allM[endPtr]._m <= endMonth) endPtr++;
-    // advance startPtr: exclude rows with month < startMonth
     while(startPtr < allM.length && allM[startPtr]._m < startMonth) startPtr++;
 
     const win = allM.slice(startPtr, endPtr);
@@ -586,19 +458,15 @@ export function runPriceCheck({
     p50Dates.push(endMonth);
     p50Vals.push(med);
     p50T.push(i);
-
-    // stable key for lookup later
     monthToT.set(monthKeyUTC(endMonth), i);
   }
 
-  // Regression through ln(p50) = a + b*t
   let reg = null;
   if(p50T.length >= 2){
     const ys = p50Vals.map(v => Math.log(v));
     reg = ols(p50T, ys);
   }
 
-  // Build regression line over the full month span (only if reg exists)
   const regDates = [];
   const regVals = [];
   if(reg){
@@ -612,8 +480,6 @@ export function runPriceCheck({
     }
   }
 
-  // Compute "my percentile at purchase" inside purchase 24M window
-  // and build rolling 24M quantile line at that percentile (optional toggle)
   const purchaseMonth = monthStartUTC(artworkDate);
   const thenWin = windowN(all, purchaseMonth, TRANSPORT_WINDOW_MONTHS);
   const thenPricesWin = thenWin.map(r=>r.price).filter(Number.isFinite).sort((a,b)=>a-b);
@@ -621,11 +487,9 @@ export function runPriceCheck({
     ? (percentileRank(thenPricesWin, price) / 100)
     : NaN;
 
-  // Build rolling quantile line at q0 (only if q0 finite)
   const qDates = [];
   const qVals = [];
   if(Number.isFinite(q0)){
-    // recompute pointers to avoid carrying state from p50 loop
     startPtr = 0;
     endPtr = 0;
     for(let i=0;i<months.length;i++){
@@ -649,12 +513,13 @@ export function runPriceCheck({
     }
   }
 
+  // Make p50 thicker
   const p50Trace = (p50Dates.length >= 2) ? {
     x: p50Dates,
     y: p50Vals,
     type:"scatter",
     mode:"lines",
-    line:{width:1.5, color:"rgba(47,59,99,0.40)"},
+    line:{width:3, color:"rgba(47,59,99,0.45)"},
     hovertemplate:"24M rolling median (p50)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
     showlegend:false,
     meta:"pc_p50_24"
@@ -665,7 +530,7 @@ export function runPriceCheck({
     y: regVals,
     type:"scatter",
     mode:"lines",
-    line:{width:3, color:"rgba(47,59,99,0.85)"},
+    line:{width:4, color:"rgba(47,59,99,0.90)"},
     hovertemplate:"Trend line (regression through rolling p50)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
     showlegend:false,
     meta:"pc_p50_reg"
@@ -676,10 +541,10 @@ export function runPriceCheck({
     y: qVals,
     type:"scatter",
     mode:"lines",
-    line:{width:2, dash:"dot", color:"rgba(246,189,116,0.95)"},
+    line:{width:2.5, dash:"dot", color:"rgba(246,189,116,0.95)"},
     hovertemplate:"My percentile (24M rolling)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
     showlegend:false,
-    visible:false, // toggled by checkbox if present
+    visible:false,
     meta:"pc_mypercentile_24"
   } : null;
 
@@ -694,15 +559,12 @@ export function runPriceCheck({
     meta:"pc_myartwork"
   } : null;
 
-  // Assemble traces (keep your original order as much as possible)
+  // Assemble traces (REMOVE orange highlight dots: thenTrace/nowTrace are gone)
   const traces = [];
-  traces.push(baseTrace, thenTrace, nowTrace);
-
-  // Lines behind the “My Artwork” marker but above scatter (so they’re readable)
+  traces.push(baseTrace);
   if(p50Trace) traces.push(p50Trace);
   if(regTrace) traces.push(regTrace);
   if(myPctTrace) traces.push(myPctTrace);
-
   if(myArtworkTrace) traces.push(myArtworkTrace);
 
   const plotPromise = Plotly.newPlot(elChart, traces, {
@@ -722,12 +584,7 @@ export function runPriceCheck({
   const pct = percentileRank(thenPricesAll, price);
 
   // ------------------------------------------------------------
-  // NEW: Percentile transport replacement
-  // Method:
-  // 1) compute rolling 24M p50 series
-  // 2) run regression through ln(p50)
-  // 3) revalue input price by ratio of regression values between
-  //    purchase month and latest month
+  // Percentile transport replacement: regression through rolling p50
   // ------------------------------------------------------------
   let equivNow = null;
 
@@ -736,9 +593,7 @@ export function runPriceCheck({
       const t0 = monthToT.get(monthKeyUTC(purchaseMonth));
       const t1 = monthToT.get(monthKeyUTC(monthStartUTC(latestDate)));
 
-      // Only proceed if purchase + latest months are inside our month range
       if(Number.isFinite(t0) && Number.isFinite(t1)){
-        // Require enough sales in the 24M window at both endpoints (>=30)
         const win0 = windowN(all, purchaseMonth, TRANSPORT_WINDOW_MONTHS);
         const win1 = windowN(all, monthStartUTC(latestDate), TRANSPORT_WINDOW_MONTHS);
 
@@ -756,15 +611,12 @@ export function runPriceCheck({
     equivNow = null;
   }
 
-  // Toggle for the optional “my percentile” rolling line (if the checkbox exists)
-  // Expected checkbox id: pc-show-mypercentile
-  // (If it doesn’t exist, nothing breaks.)
+  // Toggle for optional “my percentile” rolling line (if checkbox exists)
   plotPromise.then(() => {
     const cb = document.getElementById("pc-show-mypercentile");
     if(!cb) return;
 
     const setVis = () => {
-      // Find the trace index by meta (stable even if trace order changes)
       const gd = elChart;
       const data = (gd && gd.data) ? gd.data : [];
       const idx = data.findIndex(t => t && t.meta === "pc_mypercentile_24");
