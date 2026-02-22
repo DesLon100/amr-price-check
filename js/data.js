@@ -22,7 +22,7 @@ function parseYYYYMMToDate(yyyymm){
   return new Date(Date.UTC(y, m-1, 1));
 }
 
-// Robust CSV row parser (handles quotes and commas)
+// Robust CSV parser (quotes + commas inside quoted fields)
 function parseCSV(text){
   const rows = [];
   let row = [];
@@ -59,7 +59,6 @@ function parseCSV(text){
       }
     }
   }
-  // last field
   row.push(field);
   rows.push(row);
 
@@ -74,7 +73,7 @@ export function loadPriceCheckCSV(csvText){
   const rawHeaders = table[0].map(cleanHeader);
   const headersLower = rawHeaders.map(h => h.toLowerCase());
 
-  // helper: find column index by any of these names (case-insensitive)
+  // find column index by any aliases (case-insensitive)
   const col = (...names) => {
     for(const nm of names){
       const idx = headersLower.indexOf(String(nm).toLowerCase());
@@ -83,17 +82,23 @@ export function loadPriceCheckCSV(csvText){
     return -1;
   };
 
+  // --- YOUR REAL HEADERS (from screenshot) ---
   const idxArtistID   = col("ArtistID");
   const idxArtistName = col("ArtistName");
-  const idxMonth      = col("MonthYYYYMM", "Month", "YYYYMM");
-  const idxValue      = col("ValueGBP", "PriceGBP", "Price", "Value");
+
+  // Accept MonthYYY (your file), MonthYYYYMM (older), MonthYYYY (typo variants)
+  const idxMonth      = col("MonthYYY", "MonthYYYYMM", "MonthYYYY", "MonthYYYYMM ");
+
+  const idxValue      = col("ValueGBP", "Value", "PriceGBP", "Price");
   const idxLocCode    = col("LocationCode", "LocCode");
   const idxLotNo      = col("LotNo", "Lot", "LotNumber");
   const idxSaleURL    = col("SaleURL", "SaleUrl", "URL", "Link");
 
   if(idxArtistID < 0 || idxArtistName < 0 || idxMonth < 0 || idxValue < 0){
+    // show what we *did* see to make debugging easy
     throw new Error(
-      "CSV headers not recognised. Need at least: ArtistID, ArtistName, MonthYYYYMM, ValueGBP."
+      "CSV headers not recognised. Need at least: ArtistID, ArtistName, MonthYYY (or MonthYYYYMM), ValueGBP.\n" +
+      "Found: " + rawHeaders.join(", ")
     );
   }
 
@@ -103,11 +108,8 @@ export function loadPriceCheckCSV(csvText){
   for(let r=1; r<table.length; r++){
     const row = table[r];
 
-    const idRaw = row[idxArtistID];
-    const nameRaw = row[idxArtistName];
-
-    const id = String(idRaw ?? "").trim();
-    const name = String(nameRaw ?? "").trim();
+    const id = String(row[idxArtistID] ?? "").trim();
+    const name = String(row[idxArtistName] ?? "").trim();
     if(!id || !name) continue;
 
     const date = parseYYYYMMToDate(row[idxMonth]);
@@ -118,12 +120,10 @@ export function loadPriceCheckCSV(csvText){
 
     const LocationCode = idxLocCode >= 0 ? String(row[idxLocCode] ?? "").trim() : "";
     const LotNo = idxLotNo >= 0 ? String(row[idxLotNo] ?? "").trim() : "";
-    let SaleURL = idxSaleURL >= 0 ? String(row[idxSaleURL] ?? "").trim() : "";
 
-    // Some exports put spaces or invisible chars in URLs
+    let SaleURL = idxSaleURL >= 0 ? String(row[idxSaleURL] ?? "").trim() : "";
     SaleURL = SaleURL.replace(/\s+/g, "");
-    if(SaleURL && !SaleURL.startsWith("http")) {
-      // if it’s something like "www.sothebys.com/..." fix it
+    if(SaleURL && !SaleURL.startsWith("http")){
       if(SaleURL.startsWith("www.")) SaleURL = "https://" + SaleURL;
     }
 
@@ -142,7 +142,7 @@ export function loadPriceCheckCSV(csvText){
     }
   }
 
-  const artists = Array.from(artistMap.values()).sort((a,b) => a.name.localeCompare(b.name));
+  const artists = Array.from(artistMap.values()).sort((a,b)=>a.name.localeCompare(b.name));
 
   return {
     lotRows,
