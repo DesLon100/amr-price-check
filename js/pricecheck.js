@@ -265,16 +265,6 @@ function windowN(allRows, endDate, months){
   return allRows.filter(r => r.date >= start && r.date <= endDate);
 }
 
-function quartileAverage(rows, qIndex){
-  const prices = rows.map(r=>r.price).filter(Number.isFinite).sort((a,b)=>a-b);
-  if(prices.length < 4) return NaN;
-  const low  = quantile(prices, qIndex * 0.25);
-  const high = quantile(prices, (qIndex + 1) * 0.25);
-  const band = prices.filter(p => p >= low && p <= high);
-  if(!band.length) return NaN;
-  return band.reduce((a,b)=>a+b,0) / band.length;
-}
-
 // Month key used for stable lookups
 function monthKeyUTC(d){
   const y = d.getUTCFullYear();
@@ -330,47 +320,20 @@ function ols(xs, ys){
 }
 
 // ------------------------------------------------------------
-// Identify the "See your price movement" toggle.
-// Supports <details>, checkbox, and generic click fallback.
+// STRICT: identify ONLY the <details> disclosure whose <summary>
+// contains "See your price movement".
+// No checkbox fallback, no generic click fallback.
+// This removes the inconsistent "sometimes binds to wrong thing" behaviour.
 // ------------------------------------------------------------
-function findMovementToggle(){
+function findMovementDetails(){
   const want = "see your price movement";
-
-  // 1) <details><summary>See your price movement</summary>...</details>
   const summaries = Array.from(document.querySelectorAll("summary"));
   for(const s of summaries){
     const txt = (s.textContent || "").trim().toLowerCase();
     if(txt.includes(want) && s.parentElement && s.parentElement.tagName === "DETAILS"){
-      return { kind: "details", el: s.parentElement };
+      return s.parentElement;
     }
   }
-
-  // 2) checkbox/switch (if present)
-  const idCandidates = [
-    "pc-show-movement",
-    "pc-see-movement",
-    "pc-movement",
-    "pc-price-movement",
-    "pc-see-price-movement",
-    "see-price-movement",
-    "toggle-price-movement"
-  ];
-  for(const id of idCandidates){
-    const el = document.getElementById(id);
-    if(el && (el.type === "checkbox" || el.getAttribute("role") === "switch")){
-      return { kind: "checkbox", el };
-    }
-  }
-
-  // 3) generic clickable containing the text (fallback)
-  const clickables = Array.from(document.querySelectorAll("button,a,div,span,p,label"));
-  for(const node of clickables){
-    const txt = (node.textContent || "").trim().toLowerCase();
-    if(txt.includes(want)){
-      return { kind: "click", el: node };
-    }
-  }
-
   return null;
 }
 
@@ -516,7 +479,7 @@ export function runPriceCheck({
     }
   }
 
-  // Optional “my percentile” rolling line (still computed, but only usable once movement mode is ON)
+  // Optional “my percentile” rolling line (computed; only shown if your UI has a checkbox for it)
   const purchaseMonth = monthStartUTC(artworkDate);
   const thenWin = windowN(all, purchaseMonth, TRANSPORT_WINDOW_MONTHS);
   const thenPricesWin = thenWin.map(r=>r.price).filter(Number.isFinite).sort((a,b)=>a-b);
@@ -550,11 +513,11 @@ export function runPriceCheck({
     }
   }
 
-  // p50 + regression traces start hidden; shown only after "See your price movement" opens
+  // p50 + regression traces start hidden; shown only after details is opened
   const p50Trace = (p50Dates.length >= 2) ? {
     x: p50Dates,
     y: p50Vals,
-    type:"scattergl", // PATCH: use scattergl so it layers correctly with scattergl dots
+    type:"scattergl",               // IMPORTANT: keep same renderer as dots
     mode:"lines",
     line:{width:3.5, color:"rgba(47,59,99,0.45)"},
     hovertemplate:"24M rolling median (p50)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
@@ -566,7 +529,7 @@ export function runPriceCheck({
   const regTrace = (regDates.length >= 2) ? {
     x: regDates,
     y: regVals,
-    type:"scattergl", // PATCH: use scattergl so it layers correctly with scattergl dots
+    type:"scattergl",               // IMPORTANT: keep same renderer as dots
     mode:"lines",
     line:{width:4.5, color:"rgba(47,59,99,0.90)"},
     hovertemplate:"Trend line (regression through rolling p50)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
@@ -598,7 +561,7 @@ export function runPriceCheck({
     meta:"pc_myartwork"
   } : null;
 
-  // IMPORTANT: base dots first, lines after, so lines draw on top
+  // Order matters: dots first, then lines, then artwork marker last
   const traces = [];
   traces.push(baseTrace);
   if(p50Trace) traces.push(p50Trace);
@@ -651,16 +614,23 @@ export function runPriceCheck({
   }
 
   // ------------------------------------------------------------
-  // UI behaviour:
-  // - initial: normal dots, no p50/regression, movement slider hidden
-  // - when user opens "See your price movement":
-  //     * show p50 + regression
-  //     * switch dots to LIGHT BLUE (100% opacity)
-  //     * show movement slider (pc-move-chart)
-  //     * allow optional my-percentile line toggle
+  // UI behaviour: SIMPLE + DETERMINISTIC
+  //
+  // Baseline (always enforced after plot renders):
+  //  - dots dark
+  //  - p50/reg hidden
+  //  - slider cleared
+  //
+  // When <details> opens:
+  //  - dots light blue
+  //  - p50 + regression visible
+  //  - slider rendered
+  //
+  // When <details> closes:
+  //  - revert baseline
   // ------------------------------------------------------------
   plotPromise.then(() => {
-    const ctl = findMovementToggle();
+    const details = findMovementDetails();
 
     const DARK_DOT  = "#2f3b63";
     const LIGHT_DOT = "#9bb7e0";
@@ -674,107 +644,73 @@ export function runPriceCheck({
     const idxMy   = data.findIndex(t => t && t.meta === "pc_mypercentile_24");
 
     const cbPct = document.getElementById("pc-show-mypercentile"); // optional
-    const moveEl = document.getElementById("pc-move-chart");
-    const capEl  = document.getElementById("pc-move-caption");
 
-    const applyMode = (on) => {
-      // dots
-      if(idxBase >= 0){
-        Plotly.restyle(gd, { "marker.color": on ? LIGHT_DOT : DARK_DOT }, [idxBase]);
-      }
-      // p50/reg
-      if(idxP50 >= 0){
-        Plotly.restyle(gd, { visible: on ? true : false }, [idxP50]);
-      }
-      if(idxReg >= 0){
-        Plotly.restyle(gd, { visible: on ? true : false }, [idxReg]);
-      }
+    const applyBaseline = () => {
+      if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": DARK_DOT }, [idxBase]);
+      if(idxP50  >= 0) Plotly.restyle(gd, { visible:false }, [idxP50]);
+      if(idxReg  >= 0) Plotly.restyle(gd, { visible:false }, [idxReg]);
+      if(idxMy   >= 0) Plotly.restyle(gd, { visible:false }, [idxMy]);
+      if(cbPct) cbPct.checked = false;
 
-      // optional my-percentile line should not survive turning OFF
-      if(!on && idxMy >= 0){
-        Plotly.restyle(gd, { visible: false }, [idxMy]);
-        if(cbPct) cbPct.checked = false;
-      }
+      // Always re-query slider nodes (they may live inside <details>)
+      const moveEl = document.getElementById("pc-move-chart");
+      const capEl  = document.getElementById("pc-move-caption");
+      if(moveEl) moveEl.innerHTML = "";
+      if(capEl) capEl.textContent = "";
+    };
 
-      // movement slider (RESTORED)
+    const applyMovementOn = () => {
+      if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": LIGHT_DOT }, [idxBase]);
+      if(idxP50  >= 0) Plotly.restyle(gd, { visible:true }, [idxP50]);
+      if(idxReg  >= 0) Plotly.restyle(gd, { visible:true }, [idxReg]);
+
+      // Slider render (re-query nodes)
+      const moveEl = document.getElementById("pc-move-chart");
+      const capEl  = document.getElementById("pc-move-caption");
+
       if(moveEl){
-        if(!on){
-          moveEl.innerHTML = "";
-          if(capEl) capEl.textContent = "";
+        if(Number.isFinite(equivNow)){
+          renderMovement(moveEl, {
+            price,
+            equivNow,
+            captionText:
+              "Indicative value today is estimated by tracking the artist’s typical market level: " +
+              "we calculate a 24-month rolling median (p50), fit a trend line through it, " +
+              "then revalue your purchase price by the change in that trend between your purchase month and today."
+          });
         } else {
-          if(Number.isFinite(equivNow)){
-            renderMovement(moveEl, {
-              price,
-              equivNow,
-              captionText:
-                "Indicative value today is estimated by tracking the artist’s typical market level: " +
-                "we calculate a 24-month rolling median (p50), fit a trend line through it, " +
-                "then revalue your purchase price by the change in that trend between your purchase month and today."
-            });
-          } else {
-            moveEl.innerHTML = "";
-            if(capEl){
-              capEl.textContent = "Not enough recent auction activity to estimate an indicative value today for this artist.";
-            }
+          moveEl.innerHTML = "";
+          if(capEl){
+            capEl.textContent = "Not enough recent auction activity to estimate an indicative value today for this artist.";
           }
         }
       }
+
+      // Optional percentile line checkbox: only meaningful when movement is ON
+      if(cbPct && idxMy >= 0){
+        const onPctChange = () => {
+          Plotly.restyle(gd, { visible: cbPct.checked ? true : false }, [idxMy]);
+        };
+        // Avoid double-binding if runPriceCheck is called repeatedly:
+        cbPct.onchange = onPctChange;
+        onPctChange();
+      }
     };
 
-    // Determine ON/OFF state from the actual control type
-    let clickState = false;
+    // 1) ALWAYS force baseline after plot completes (prevents “lines appear on load”)
+    applyBaseline();
 
-    const getOn = () => {
-      if(!ctl) return false;
-      if(ctl.kind === "details")  return !!ctl.el.open;
-      if(ctl.kind === "checkbox") return !!ctl.el.checked;
-      if(ctl.kind === "click")    return !!clickState;
-      return false;
-    };
+    // 2) If the details exists and is already open, immediately apply ON state
+    if(details && details.open){
+      applyMovementOn();
+    }
 
-    // initial
-    applyMode(getOn());
-
-    // optional percentile checkbox behaviour
-    if(cbPct && idxMy >= 0){
-      const onPctChange = () => {
-        const on = getOn();
-        Plotly.restyle(gd, { visible: (on && cbPct.checked) ? true : false }, [idxMy]);
+    // 3) Bind exactly one toggle handler (overwrite previous if rerun)
+    if(details){
+      details.ontoggle = () => {
+        if(details.open) applyMovementOn();
+        else applyBaseline();
       };
-      cbPct.addEventListener("change", onPctChange);
-      onPctChange();
-    }
-
-    if(!ctl) return;
-
-    if(ctl.kind === "details"){
-      ctl.el.addEventListener("toggle", () => {
-        applyMode(getOn());
-        if(cbPct && idxMy >= 0){
-          Plotly.restyle(gd, { visible: (getOn() && cbPct.checked) ? true : false }, [idxMy]);
-        }
-      });
-      return;
-    }
-
-    if(ctl.kind === "checkbox"){
-      ctl.el.addEventListener("change", () => {
-        applyMode(getOn());
-        if(cbPct && idxMy >= 0){
-          Plotly.restyle(gd, { visible: (getOn() && cbPct.checked) ? true : false }, [idxMy]);
-        }
-      });
-      return;
-    }
-
-    if(ctl.kind === "click"){
-      ctl.el.addEventListener("click", () => {
-        clickState = !clickState;
-        applyMode(getOn());
-        if(cbPct && idxMy >= 0){
-          Plotly.restyle(gd, { visible: (getOn() && cbPct.checked) ? true : false }, [idxMy]);
-        }
-      });
     }
   });
 
