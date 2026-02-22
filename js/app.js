@@ -1,5 +1,5 @@
 // js/app.js
-import { runPriceCheck } from "./pricecheck.js";
+import { runPriceCheck, setPriceCheckScale } from "./pricecheck.js";
 import { loadPriceCheckCSV } from "./data.js";
 
 const el = (id) => document.getElementById(id);
@@ -12,13 +12,20 @@ const escapeHtml = (s) =>
     "'": "&#039;",
   }[m]));
 
-// Local helper so app.js does not depend on an export that may disappear
-function setPriceCheckScale(elChart, scale) {
-  if (!elChart) return;
-  const t = scale === "log" ? "log" : "linear";
-  if (window.Plotly) {
-    Plotly.relayout(elChart, { "yaxis.type": t, "yaxis.autorange": true });
-  }
+function fmtGBP0(x) {
+  const n = Number(x);
+  if (!Number.isFinite(n)) return "—";
+  return "£" + Math.round(n).toLocaleString("en-GB");
+}
+
+function fmtYYYYMMLabel(yyyymm) {
+  const t = String(yyyymm || "").trim();
+  if (!/^\d{6}$/.test(t)) return "";
+  const y = Number(t.slice(0, 4));
+  const m = Number(t.slice(4, 6)) - 1;
+  if (!(y >= 1900 && m >= 0 && m <= 11)) return "";
+  const d = new Date(Date.UTC(y, m, 1));
+  return d.toLocaleString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
 }
 
 // Top bar
@@ -37,16 +44,36 @@ const pcUniverse = el("pc-universe");
 const pcLogToggle = el("pc-log");
 const pcBack = el("pc-back");
 
-// Optional (safe if not present)
-const pcStory = el("pc-story");
-const pcKpis = el("pc-kpis");
+// Optional (safe if missing from HTML)
+const pcStory = el("pc-story"); // harmless if empty
+const pcKpis = el("pc-kpis");   // harmless if removed from HTML
 
-// Bands UI (your HTML currently has class="pc-bands", not id="pc-bands")
+// Bands UI
+const pcBands = el("pc-bands"); // may be null if you removed id, handled safely
 const pcBandsToggle = el("pc-bands-toggle");
-const pcBands =
-  el("pc-bands") || document.querySelector(".pc-bands") || null;
 
 let lastRun = null;
+
+// Hero (title/subtitle at top of the page)
+const heroTitle = document.querySelector(".hero-title");
+const heroSub = document.querySelector(".hero-sub");
+const defaultHeroTitle = heroTitle ? heroTitle.textContent : "";
+const defaultHeroSub = heroSub ? heroSub.textContent : "";
+
+function setHeroForResults({ artistName, price, purchaseMonth }) {
+  if (heroTitle) heroTitle.textContent = "My Artwork";
+
+  const parts = [artistName, fmtGBP0(price)];
+  const monthLabel = fmtYYYYMMLabel(purchaseMonth);
+  if (monthLabel) parts.push(monthLabel);
+
+  if (heroSub) heroSub.textContent = parts.join(" · ");
+}
+
+function resetHero() {
+  if (heroTitle) heroTitle.textContent = defaultHeroTitle;
+  if (heroSub) heroSub.textContent = defaultHeroSub;
+}
 
 // ----- Load CSV -----
 file?.addEventListener("change", async (e) => {
@@ -79,15 +106,16 @@ file?.addEventListener("change", async (e) => {
 
     if (pcRun) pcRun.disabled = false;
 
+    // Reset view/state
     lastRun = null;
     if (pcLogToggle) pcLogToggle.checked = false;
-
     collapseBands();
+    resetHero();
     showForm();
   } catch (err) {
     alert(err?.message || String(err));
-    if (status) status.textContent = "No dataset loaded.";
 
+    if (status) status.textContent = "No dataset loaded.";
     if (pcArtist) {
       pcArtist.disabled = true;
       pcArtist.innerHTML = `<option value="">Load data first…</option>`;
@@ -96,6 +124,7 @@ file?.addEventListener("change", async (e) => {
 
     lastRun = null;
     collapseBands();
+    resetHero();
     showForm();
   }
 });
@@ -114,7 +143,6 @@ pcRun?.addEventListener("click", () => {
   const myMonth = (pcMonth?.value || "").trim();
   const yScale = pcLogToggle?.checked ? "log" : "linear";
 
-  // Workbench-lite adapter (only what pricecheck.js expects)
   const wbLite = {
     getLotRows: () => data.lotRows,
     getArtistName: (id) => data.getArtistName(id),
@@ -129,14 +157,16 @@ pcRun?.addEventListener("click", () => {
       myMonthYYYYMM: myMonth,
       yScale,
       elChart: pcUniverse,
-
-      // harmless if pricecheck.js ignores them
+      // extra args are ignored safely if your pricecheck.js doesn't use them:
       elKpis: pcKpis,
       elStory: pcStory,
-      windowMonths: null,
     });
 
     lastRun = { artistId, price, myMonthYYYYMM: myMonth };
+
+    // Update hero ONLY after pressing Check price
+    const artistName = data.getArtistName(artistId);
+    setHeroForResults({ artistName, price, purchaseMonth: myMonth });
 
     // Keep bands collapsed by default each run
     collapseBands();
@@ -163,7 +193,6 @@ pcBandsToggle?.addEventListener("click", () => {
   pcBandsToggle.setAttribute("aria-expanded", String(!open));
   pcBands?.classList.toggle("hidden", open);
 
-  // ensure Plotly in collapsed panel sizes correctly when opening
   if (open === false) {
     setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
   }
@@ -173,6 +202,7 @@ pcBandsToggle?.addEventListener("click", () => {
 pcBack?.addEventListener("click", () => {
   lastRun = null;
   collapseBands();
+  resetHero();
   showForm();
 });
 
