@@ -45,14 +45,13 @@ const pcUniverse = el("pc-universe");
 const pcLogToggle = el("pc-log");
 const pcBack = el("pc-back");
 
-// Context + movement
+// Context + movement panel
 const pcContextText = el("pc-context-text");
 const pcMove = el("pc-move");
 const pcMoveToggle = el("pc-move-toggle");
 
-// Stable link under chart (optional)
-const pcSaleLinkWrap = el("pc-sale-link-wrap");
-const pcSaleLink = el("pc-sale-link");
+let lastRun = null;
+let currentGraphDiv = null;
 
 // Hero
 const heroTitleTextEl = document.querySelector(".hero-title-text");
@@ -62,12 +61,7 @@ const heroDot = el("hero-dot");
 const defaultHeroTitle = heroTitleTextEl ? heroTitleTextEl.textContent : "";
 const defaultHeroSub = heroSub ? heroSub.textContent : "";
 
-let lastRun = null;
-
-// We keep the *current* Plotly graph div here (returned by Plotly.newPlot)
-let currentGraphDiv = null;
-
-// ----- Hero helpers -----
+// Hero helpers
 function setHeroForResults({ artistName, price, purchaseMonth }) {
   if (heroTitleTextEl) heroTitleTextEl.textContent = "My Artwork";
   heroDot?.classList.remove("hidden");
@@ -84,7 +78,7 @@ function resetHero() {
   if (heroSub) heroSub.textContent = defaultHeroSub;
 }
 
-// ----- Context copy -----
+// Context copy
 function setFMVContextCopy() {
   if (!pcContextText) return;
   pcContextText.textContent =
@@ -93,11 +87,10 @@ function setFMVContextCopy() {
     "if more works sell above it, fair market value has likely decreased.";
 }
 
-// ----- View helpers -----
+// View helpers
 function showForm() {
   pcFormCard?.classList.remove("hidden");
   pcResults?.classList.add("hidden");
-  hideStableSaleLink();
   setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
 }
 
@@ -108,23 +101,7 @@ function showResults() {
   setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
 }
 
-// ----- Stable link under chart -----
-function hideStableSaleLink() {
-  pcSaleLinkWrap?.classList.add("hidden");
-  if (pcSaleLink) pcSaleLink.href = "#";
-}
-function showStableSaleLink(url) {
-  if (!pcSaleLinkWrap || !pcSaleLink) return;
-  const u = String(url || "").trim();
-  if (u && u.startsWith("http")) {
-    pcSaleLink.href = u;
-    pcSaleLinkWrap.classList.remove("hidden");
-  } else {
-    hideStableSaleLink();
-  }
-}
-
-// ----- Highlight toggle -----
+// Highlight toggle (both windows)
 function setRankingHighlight(isOn) {
   const gd = currentGraphDiv;
   if (!gd?.data) return;
@@ -144,52 +121,26 @@ function collapseMovePanel() {
   setRankingHighlight(false);
 }
 
-// ----- CLICK BINDING (THE IMPORTANT BIT) -----
-// Bind to the actual graph div (gd) returned by Plotly.newPlot.
-// This avoids the “bound too early / bound to wrong node” failure.
-function bindGraphInteractivity(gd) {
-  if (!gd || typeof gd.on !== "function") return;
-
-  // Remove any old handlers if we replot
-  if (gd.__pcBound) return;
-  gd.__pcBound = true;
+// Bind click to open sale URL
+function bindGraphClickOnce(gd) {
+  if (!gd || gd.__pcClickBound) return;
+  gd.__pcClickBound = true;
 
   gd.on("plotly_click", (ev) => {
     const p = ev?.points?.[0];
-
-    // robust url extraction
     let url =
       p?.customdata?.[2] ??
       (Number.isInteger(p?.pointIndex) && p?.data?.customdata?.[p.pointIndex]?.[2]);
 
     url = String(url || "").trim();
+    if (!url || !url.startsWith("http")) return;
 
-    // tiny debug so you can confirm click is firing
-    // (remove later if you like)
-    console.log("plotly_click url:", url);
-
-    if (url && url.startsWith("http")) {
-      const w = window.open(url, "_blank", "noopener,noreferrer");
-
-      // If popup blocked, fall back to same tab
-      if (!w) {
-        window.location.href = url;
-      }
-    }
+    const w = window.open(url, "_blank", "noopener,noreferrer");
+    if (!w) window.location.href = url; // popup blocked fallback
   });
-
-  gd.on("plotly_hover", (ev) => {
-    const p = ev?.points?.[0];
-    const url =
-      p?.customdata?.[2] ??
-      (Number.isInteger(p?.pointIndex) && p?.data?.customdata?.[p.pointIndex]?.[2]);
-    showStableSaleLink(url);
-  });
-
-  gd.on("plotly_unhover", () => hideStableSaleLink());
 }
 
-// ----- Load CSV -----
+// Load CSV
 file?.addEventListener("change", async (e) => {
   const f = e.target.files?.[0];
   if (!f) return;
@@ -218,10 +169,9 @@ file?.addEventListener("change", async (e) => {
     if (pcRun) pcRun.disabled = false;
 
     lastRun = null;
+    currentGraphDiv = null;
     if (pcLogToggle) pcLogToggle.checked = false;
 
-    currentGraphDiv = null;
-    hideStableSaleLink();
     collapseMovePanel();
     resetHero();
     setFMVContextCopy();
@@ -238,14 +188,13 @@ file?.addEventListener("change", async (e) => {
 
     lastRun = null;
     currentGraphDiv = null;
-    hideStableSaleLink();
     collapseMovePanel();
     resetHero();
     showForm();
   }
 });
 
-// ----- Run -----
+// Run
 function doRun({ scroll = true } = {}) {
   const artistId = pcArtist?.value || "";
   const price = Number(pcPrice?.value);
@@ -274,13 +223,11 @@ function doRun({ scroll = true } = {}) {
     elChart: pcUniverse,
   });
 
-  // ✅ Plotly.newPlot resolves to the real graph div
+  // wait for plotly to finish, then bind click on the real graph div
   out?.plotPromise?.then((gd) => {
     currentGraphDiv = gd;
-
-    // allow re-bind after each replot
-    gd.__pcBound = false;
-    bindGraphInteractivity(gd);
+    gd.__pcClickBound = false; // allow rebind after each newPlot
+    bindGraphClickOnce(gd);
   });
 
   lastRun = { artistId, price, myMonthYYYYMM: myMonth };
@@ -289,7 +236,6 @@ function doRun({ scroll = true } = {}) {
   setHeroForResults({ artistName, price, purchaseMonth: myMonth });
 
   setFMVContextCopy();
-  hideStableSaleLink();
   collapseMovePanel();
 
   if (scroll) showResults();
@@ -306,7 +252,7 @@ pcLogToggle?.addEventListener("change", () => {
   catch (err) { alert(err?.message || String(err)); }
 });
 
-// Movement toggle
+// Movement toggle (CTA)
 pcMoveToggle?.addEventListener("click", () => {
   const open = pcMoveToggle.getAttribute("aria-expanded") === "true";
   const next = !open;
@@ -323,7 +269,6 @@ pcMoveToggle?.addEventListener("click", () => {
 pcBack?.addEventListener("click", () => {
   lastRun = null;
   currentGraphDiv = null;
-  hideStableSaleLink();
   collapseMovePanel();
   resetHero();
   showForm();
