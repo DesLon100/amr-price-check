@@ -24,9 +24,9 @@
     <section id="view-pricecheck" class="view">
       <div class="hero">
         <h1 class="hero-title">
-  <span class="hero-title-text">Check my artwork's price</span>
-  <span id="hero-dot" class="hero-dot hidden" aria-hidden="true"></span>
-</h1>
+          <span class="hero-title-text">Check my artwork's price</span>
+          <span id="hero-dot" class="hero-dot hidden" aria-hidden="true"></span>
+        </h1>
         <p class="hero-sub">Instantly see where your artwork sits in the auction market.</p>
       </div>
 
@@ -62,11 +62,14 @@
         <!-- Scatter chart -->
         <div class="pc-chart-wrap">
           <div id="pc-universe" class="pc-chart"></div>
-        <div id="pc-sale-link-wrap" class="pc-sale-link-wrap hidden">
-  <a id="pc-sale-link" class="pc-sale-link" href="#" target="_blank" rel="noopener noreferrer">
-    Open sale ↗
-  </a>
-</div>
+
+          <!-- Stable click target (updates on hover) -->
+          <div id="pc-sale-link-wrap" class="pc-sale-link-wrap hidden">
+            <a id="pc-sale-link" class="pc-sale-link" href="#" target="_blank" rel="noopener noreferrer">
+              Open sale ↗
+            </a>
+          </div>
+
           <!-- Linear / Log toggle -->
           <div class="pc-toggle-row">
             <span class="muted">Linear</span>
@@ -80,13 +83,13 @@
           </div>
         </div>
 
-                <!-- Valuer-facing explanation -->
+        <!-- Investor-safe sentence (directly under toggle) -->
         <div class="pc-section">
           <h3 class="pc-section-title">Fair Market Value Movement</h3>
           <div id="pc-context-text" class="pc-context-text"></div>
         </div>
 
-        <!-- CTA toggle (restored) -->
+        <!-- Movement toggle (CTA) -->
         <div class="pc-context">
           <button
             id="pc-move-toggle"
@@ -98,7 +101,7 @@
           </button>
         </div>
 
-        <!-- Collapsible slider panel (restored) -->
+        <!-- Collapsible movement slider -->
         <div id="pc-move" class="pc-bands hidden">
           <div id="pc-move-chart" class="pc-bands-chart"></div>
 
