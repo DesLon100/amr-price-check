@@ -57,7 +57,7 @@ const heroSub = document.querySelector(".hero-sub");
 const defaultHeroTitle = heroTitle ? heroTitle.textContent : "";
 const defaultHeroSub = heroSub ? heroSub.textContent : "";
 
-// ---------- Hero helpers (changes ONLY after Check price) ----------
+// Hero helpers
 function setHeroForResults({ artistName, price, purchaseMonth }) {
   if (heroTitle) heroTitle.textContent = "My Artwork";
 
@@ -73,7 +73,7 @@ function resetHero() {
   if (heroSub) heroSub.textContent = defaultHeroSub;
 }
 
-// ---------- Context copy ----------
+// Context copy
 function setFMVContextCopy() {
   if (!pcContextText) return;
   pcContextText.textContent =
@@ -82,7 +82,7 @@ function setFMVContextCopy() {
     "if more works sell above it, fair market value has likely decreased.";
 }
 
-// ---------- View helpers ----------
+// View helpers
 function showForm() {
   pcFormCard?.classList.remove("hidden");
   pcResults?.classList.add("hidden");
@@ -96,14 +96,14 @@ function showResults() {
   setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
 }
 
-// ---------- Scatter click-through (SaleURL) ----------
+// Click-through: click any dot -> open SaleURL
 function bindLotClickOnce() {
   if (!pcUniverse || pcUniverse.__pcLotClickBound) return;
   pcUniverse.__pcLotClickBound = true;
 
   pcUniverse.on("plotly_click", (ev) => {
     const p = ev?.points?.[0];
-    // customdata = [AuctionHouse·City, LotNo, SaleURL]
+    // customdata = [House (City), LotNo, SaleURL]
     const url = p?.customdata?.[2];
     if (url && typeof url === "string") {
       window.open(url, "_blank", "noopener,noreferrer");
@@ -111,13 +111,13 @@ function bindLotClickOnce() {
   });
 }
 
-// ---------- Highlight toggle (then + now windows) ----------
+// Highlight toggle (both windows)
 function setRankingHighlight(isOn) {
   if (!pcUniverse?.data) return;
 
-  const ids = ["pc_highlight_then", "pc_highlight_now"];
-  const idxs = ids
-    .map((meta) => pcUniverse.data.findIndex((t) => t?.meta === meta))
+  const metas = ["pc_highlight_then", "pc_highlight_now"];
+  const idxs = metas
+    .map((m) => pcUniverse.data.findIndex((t) => t?.meta === m))
     .filter((i) => i >= 0);
 
   if (!idxs.length) return;
@@ -130,7 +130,7 @@ function collapseMovePanel() {
   setRankingHighlight(false);
 }
 
-// ----- Load CSV -----
+// Load CSV
 file?.addEventListener("change", async (e) => {
   const f = e.target.files?.[0];
   if (!f) return;
@@ -158,7 +158,6 @@ file?.addEventListener("change", async (e) => {
 
     if (pcRun) pcRun.disabled = false;
 
-    // Reset view/state
     lastRun = null;
     if (pcLogToggle) pcLogToggle.checked = false;
     collapseMovePanel();
@@ -182,7 +181,7 @@ file?.addEventListener("change", async (e) => {
   }
 });
 
-// ----- Run Price Check -----
+// Run
 function doRun({ scroll = true } = {}) {
   const artistId = pcArtist?.value || "";
   const price = Number(pcPrice?.value);
@@ -211,42 +210,32 @@ function doRun({ scroll = true } = {}) {
     elChart: pcUniverse,
   });
 
-  // Ensure click-through handler exists after plotting
   bindLotClickOnce();
 
   lastRun = { artistId, price, myMonthYYYYMM: myMonth };
 
-  // Hero ONLY after pressing Check price
   const artistName = data.getArtistName(artistId);
   setHeroForResults({ artistName, price, purchaseMonth: myMonth });
 
   setFMVContextCopy();
-
-  // Keep movement panel collapsed by default each run (CTA remains)
   collapseMovePanel();
 
   if (scroll) showResults();
 }
 
 pcRun?.addEventListener("click", () => {
-  try {
-    doRun({ scroll: true });
-  } catch (err) {
-    alert(err?.message || String(err));
-  }
+  try { doRun({ scroll: true }); }
+  catch (err) { alert(err?.message || String(err)); }
 });
 
-// ----- Toggle y-scale (re-run) -----
+// Re-run on log toggle
 pcLogToggle?.addEventListener("change", () => {
   if (!lastRun) return;
-  try {
-    doRun({ scroll: false });
-  } catch (err) {
-    alert(err?.message || String(err));
-  }
+  try { doRun({ scroll: false }); }
+  catch (err) { alert(err?.message || String(err)); }
 });
 
-// ----- Movement toggle (CTA) -----
+// Movement toggle (CTA)
 pcMoveToggle?.addEventListener("click", () => {
   const open = pcMoveToggle.getAttribute("aria-expanded") === "true";
   const next = !open;
@@ -254,7 +243,6 @@ pcMoveToggle?.addEventListener("click", () => {
   pcMoveToggle.setAttribute("aria-expanded", String(next));
   pcMove?.classList.toggle("hidden", open);
 
-  // Highlight BOTH ranking-window sets when panel is open
   setRankingHighlight(next);
 
   if (next) {
@@ -262,7 +250,7 @@ pcMoveToggle?.addEventListener("click", () => {
   }
 });
 
-// ----- Back -----
+// Back
 pcBack?.addEventListener("click", () => {
   lastRun = null;
   collapseMovePanel();
