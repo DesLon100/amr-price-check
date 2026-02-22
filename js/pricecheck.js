@@ -1,5 +1,39 @@
 // js/pricecheck.js
 
+// ------------------------------------------------------------
+// LocationCode -> "Auction house · CITY" mapping
+// Generated from your uploaded: AMR Location ids.xlsx
+// ------------------------------------------------------------
+const LOCATION_LOOKUP = {
+  "33AUBALI": "33 Auction · BALI",
+  "33AUJAKA": "33 Auction · JAKARTA",
+  "33AUONLI": "33 Auction · ONLINE",
+  "33AUOSGD": "33 Auction · ONLINE SGD",
+  "33AUSING": "33 Auction · SINGAPORE",
+  "AGUTDROU": "Claude Aguttes · DROUOT",
+  "AGUTLYON": "Claude Aguttes · LYON",
+  "AGUTNEUI": "Claude Aguttes · NEUILLY",
+  "AGUTOEUR": "Claude Aguttes · ONLINE EUR",
+  "AGUTONLI": "Claude Aguttes · ONLINE",
+  "AGUTPARI": "Claude Aguttes · PARIS",
+  "ARTCBASE": "Artcurial · BASEL",
+  "ARTCBRUX": "Artcurial · BRUSSELS",
+  "ARTCDROU": "Artcurial · DROUOT",
+  "ARTCHONG": "Artcurial · HONG KONG",
+  "ARTCMARR": "Artcurial · MARRAKESH",
+  "ARTCMCAR": "Artcurial · MONTE CARLO",
+  "ARTCONLI": "Artcurial · ONLINE",
+  "ARTCPARI": "Artcurial · PARIS",
+  "ARTCTOKY": "Artcurial · TOKYO",
+  "ARTCWINT": "Artcurial · WINTERTHUR",
+  // ... (mapping continues for all codes)
+};
+
+// IMPORTANT: The mapping is long (~197 entries).
+// I’ve truncated the middle here to keep the message readable.
+// You should paste the *full* mapping block I provide below this code section.
+// ------------------------------------------------------------
+
 function fmtGBP(x){
   if(!Number.isFinite(x)) return "—";
   return "£" + Math.round(x).toLocaleString("en-GB");
@@ -111,10 +145,15 @@ function renderMovement(el, { price, equivNow, captionText = "" }){
 }
 
 // --- CSV schema (from your screenshot) ---
-// ArtistID, ArtistName, MonthYYYYMM, ValueGBP, LocationID, LocationCode, AuctionID, LotNo, SaleURL
-function getLocationCode(r){ return (r.LocationCode ?? r.locationCode ?? r.location_code ?? r.location ?? "—"); }
+function getLocationCode(r){ return (r.LocationCode ?? r.locationCode ?? r.location_code ?? r.location ?? ""); }
 function getLotNo(r){ return (r.LotNo ?? r.lotNo ?? r.lotno ?? r.lot ?? "—"); }
 function getSaleURL(r){ return (r.SaleURL ?? r.saleURL ?? r.url ?? r.link ?? ""); }
+
+function locationLabel(code){
+  const c = String(code || "").trim();
+  if(!c) return "—";
+  return LOCATION_LOOKUP[c] || c; // fallback to raw code if missing
+}
 
 /**
  * Main entry
@@ -153,9 +192,9 @@ export function runPriceCheck({
   const x = all.map(r=>r.date);
   const y = all.map(r=>r.price);
 
-  // customdata = [LocationCode, LotNo, SaleURL]
+  // customdata = [AuctionHouse·City, LotNo, SaleURL]
   const customdata = all.map(r => [
-    getLocationCode(r),
+    locationLabel(getLocationCode(r)),
     getLotNo(r),
     getSaleURL(r)
   ]);
@@ -178,14 +217,17 @@ export function runPriceCheck({
   };
 
   // ---- Highlight traces (hidden by default; toggled in app.js) ----
-  // Complementary orange
   const ORANGE_NOW  = "#f4a261";
   const ORANGE_THEN = "#f6bd74";
 
   const thenTrace = {
     x: thenRowsHighlight.map(r => r.date),
     y: thenRowsHighlight.map(r => r.price),
-    customdata: thenRowsHighlight.map(r => [getLocationCode(r), getLotNo(r), getSaleURL(r)]),
+    customdata: thenRowsHighlight.map(r => [
+      locationLabel(getLocationCode(r)),
+      getLotNo(r),
+      getSaleURL(r)
+    ]),
     type: "scattergl",
     mode: "markers",
     marker: { size: 7, color: ORANGE_THEN },
@@ -198,7 +240,11 @@ export function runPriceCheck({
   const nowTrace = {
     x: nowRowsHighlight.map(r => r.date),
     y: nowRowsHighlight.map(r => r.price),
-    customdata: nowRowsHighlight.map(r => [getLocationCode(r), getLotNo(r), getSaleURL(r)]),
+    customdata: nowRowsHighlight.map(r => [
+      locationLabel(getLocationCode(r)),
+      getLotNo(r),
+      getSaleURL(r)
+    ]),
     type: "scattergl",
     mode: "markers",
     marker: { size: 7, color: ORANGE_NOW },
@@ -232,6 +278,7 @@ export function runPriceCheck({
     margin: { l: 56, r: 18, t: 26, b: 48 },
     yaxis: { type: (yScale === "log") ? "log" : "linear" },
     xaxis: { type: "date" },
+    hovermode: "closest",
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)"
   }, { responsive: true, displayModeBar: false });
