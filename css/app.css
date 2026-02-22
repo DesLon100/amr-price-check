@@ -319,3 +319,19 @@ body{
   text-decoration:underline;
 }
 .hidden{ display:none; }
+.hero-title{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.hero-dot{
+  width:14px;
+  height:14px;
+  border-radius:999px;
+  background:#fee7b1;              /* same fill as My Artwork dot */
+  border:3px solid #111;            /* or #2c3a5c to match chart ring */
+  border-color:#2c3a5c;
+  box-sizing:border-box;
+  flex:0 0 auto;
+}
