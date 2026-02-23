@@ -650,71 +650,87 @@ export function runPriceCheck({
     equivNow = null;
   }
 
-  // ------------------------------------------------------------
-  // UI behaviour: baseline -> on toggle open -> show lines + slider
+   // ------------------------------------------------------------
+  // UI behaviour (DETERMINISTIC, tied to #pc-move-toggle button)
   // ------------------------------------------------------------
   plotPromise.then(() => {
-    const t = findMovementToggle();
+    const btn = document.getElementById("pc-move-toggle");
+    const panel = document.getElementById("pc-move");
+
+    const moveEl = document.getElementById("pc-move-chart");
+    const capEl  = document.getElementById("pc-move-caption");
+
+    // NEW scrubber elements (optional; exist if you applied HTML patch)
+    const rng   = document.getElementById("pc-target-range");
+    const lab   = document.getElementById("pc-target-label");
+    const reset = document.getElementById("pc-target-reset");
 
     const DARK_DOT  = "#2f3b63";
-    const LIGHT_DOT = "#9bb7e0";
+    const LIGHT_DOT = "#9bb7e0"; // light blue, full opacity
 
     const gd = elChart;
     const data = (gd && gd.data) ? gd.data : [];
 
-    const idxBase = data.findIndex(tr => tr && tr.meta === "pc_base");
-    const idxP50  = data.findIndex(tr => tr && tr.meta === "pc_p50_24");
-    const idxReg  = data.findIndex(tr => tr && tr.meta === "pc_p50_reg");
-    const idxMy   = data.findIndex(tr => tr && tr.meta === "pc_mypercentile_24");
+    const idxBase = data.findIndex(t => t && t.meta === "pc_base");
+    const idxP50  = data.findIndex(t => t && t.meta === "pc_p50_24");
+    const idxReg  = data.findIndex(t => t && t.meta === "pc_p50_reg");
+    const idxMy   = data.findIndex(t => t && t.meta === "pc_mypercentile_24");
 
-    const cbPct = document.getElementById("pc-show-mypercentile"); // optional
+    const cbPct = document.getElementById("pc-show-mypercentile"); // if you have it elsewhere
 
-    const clearSlider = () => {
-      const moveEl = document.getElementById("pc-move-chart");
-      const capEl  = document.getElementById("pc-move-caption");
-      if(moveEl) moveEl.innerHTML = "";
-      if(capEl) capEl.textContent = "";
+    // ---- helper: format YYYY-MM
+    const fmtMonth = (d) => {
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2,"0");
+      return `${y}-${m}`;
     };
 
-    const renderSlider = () => {
-      const moveEl = document.getElementById("pc-move-chart");
-      const capEl  = document.getElementById("pc-move-caption");
-
-      if(!moveEl) return;
-
-      if(Number.isFinite(equivNow)){
-        renderMovement(moveEl, {
-          price,
-          equivNow,
-          captionText:
-            "Indicative value today is estimated by tracking the artist’s typical market level: " +
-            "we calculate a 24-month rolling median (p50), fit a trend line through it, " +
-            "then revalue your purchase price by the change in that trend between your purchase month and today."
-        });
-      } else {
-        moveEl.innerHTML = "";
-        if(capEl){
-          capEl.textContent = "Not enough recent auction activity to estimate an indicative value today for this artist.";
-        }
-      }
+    const monthLabel = (d) => {
+      // Short label like "Mar 2022"
+      return d.toLocaleString("en-GB", { month:"short", year:"numeric", timeZone:"UTC" });
     };
 
+    // ---- implied value using regression ratio (input month -> target month)
+    function impliedValueAt(targetMonthUTC){
+      if(!reg || !Number.isFinite(price) || price <= 0) return null;
+
+      const tInput  = monthToT.get(monthKeyUTC(purchaseMonth));
+      const tTarget = monthToT.get(monthKeyUTC(monthStartUTC(targetMonthUTC)));
+
+      if(!Number.isFinite(tInput) || !Number.isFinite(tTarget)) return null;
+
+      const winInput  = windowN(all, purchaseMonth, TRANSPORT_WINDOW_MONTHS);
+      const winTarget = windowN(all, monthStartUTC(targetMonthUTC), TRANSPORT_WINDOW_MONTHS);
+
+      if(winInput.length < MIN_SALES_IN_WINDOW || winTarget.length < MIN_SALES_IN_WINDOW) return null;
+
+      const pInput  = Math.exp(reg.a + reg.b * tInput);
+      const pTarget = Math.exp(reg.a + reg.b * tTarget);
+
+      if(!Number.isFinite(pInput) || !Number.isFinite(pTarget) || pInput <= 0 || pTarget <= 0) return null;
+
+      return price * (pTarget / pInput);
+    }
+
+    // ---- baseline state: scatter only
     const applyBaseline = () => {
       if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": DARK_DOT }, [idxBase]);
       if(idxP50  >= 0) Plotly.restyle(gd, { visible:false }, [idxP50]);
       if(idxReg  >= 0) Plotly.restyle(gd, { visible:false }, [idxReg]);
       if(idxMy   >= 0) Plotly.restyle(gd, { visible:false }, [idxMy]);
       if(cbPct) cbPct.checked = false;
-      clearSlider();
+
+      if(moveEl) moveEl.innerHTML = "";
+      if(capEl) capEl.textContent = "";
     };
 
-    const applyOn = () => {
+    // ---- movement ON: light dots + p50/reg visible
+    const applyMovementOn = () => {
       if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": LIGHT_DOT }, [idxBase]);
       if(idxP50  >= 0) Plotly.restyle(gd, { visible:true }, [idxP50]);
       if(idxReg  >= 0) Plotly.restyle(gd, { visible:true }, [idxReg]);
 
-      renderSlider();
-
+      // If you have a "my percentile" checkbox, only allow it when ON
       if(cbPct && idxMy >= 0){
         cbPct.onchange = () => {
           Plotly.restyle(gd, { visible: cbPct.checked ? true : false }, [idxMy]);
@@ -722,6 +738,101 @@ export function runPriceCheck({
         cbPct.onchange();
       }
     };
+
+    // ---- render slider for a chosen target month
+    const renderForTarget = (targetDateUTC) => {
+      if(!moveEl) return;
+
+      const equiv = impliedValueAt(targetDateUTC);
+
+      if(lab) lab.textContent = monthLabel(targetDateUTC);
+
+      if(Number.isFinite(equiv)){
+        renderMovement(moveEl, {
+          price,
+          equivNow: equiv,
+          captionText:
+            "Indicative FMV translation based on the artist’s 24-month rolling median (p50) trend. " +
+            "Drag the target month to translate the same input price across time."
+        });
+      } else {
+        moveEl.innerHTML = "";
+        if(capEl){
+          capEl.textContent =
+            "Not enough auction activity around one of the selected dates to compute an FMV translation.";
+        }
+      }
+    };
+
+    // ---- initialise scrubber range to the months you actually have in regression space
+    const initScrubber = () => {
+      if(!rng || !months || !months.length) return;
+
+      // Use full months array; clamp to those with a valid t mapping if needed
+      // (we map by monthStart, so months[] should match)
+      rng.min = 0;
+      rng.max = months.length - 1;
+
+      // default target = latest month in dataset
+      rng.value = String(months.length - 1);
+
+      if(lab) lab.textContent = monthLabel(months[months.length - 1]);
+
+      rng.oninput = () => {
+        const idx = Math.max(0, Math.min(months.length - 1, Number(rng.value)));
+        renderForTarget(months[idx]);
+      };
+
+      if(reset){
+        reset.onclick = () => {
+          rng.value = String(months.length - 1);
+          renderForTarget(months[months.length - 1]);
+        };
+      }
+    };
+
+    // ---- toggle open/close panel + plot state + slider
+    const setOpen = (open) => {
+      if(!btn || !panel) return;
+
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      panel.classList.toggle("hidden", !open);
+
+      if(open){
+        applyMovementOn();
+        initScrubber();
+
+        // If scrubber exists, it drives the target date; otherwise fallback to latest
+        if(rng && months && months.length){
+          const idx = Math.max(0, Math.min(months.length - 1, Number(rng.value || (months.length - 1))));
+          renderForTarget(months[idx]);
+        } else {
+          renderForTarget(monthStartUTC(latestDate));
+        }
+      } else {
+        applyBaseline();
+      }
+    };
+
+    // Force baseline every time results render (prevents “sometimes lines appear on load”)
+    applyBaseline();
+
+    // Bind toggle once per run
+    if(btn && !btn.dataset.bound){
+      btn.dataset.bound = "1";
+      btn.addEventListener("click", () => {
+        const isOpen = btn.getAttribute("aria-expanded") === "true";
+        setOpen(!isOpen);
+      });
+    }
+
+    // If panel is currently open for some reason, respect it
+    if(btn && btn.getAttribute("aria-expanded") === "true"){
+      setOpen(true);
+    } else {
+      setOpen(false);
+    }
+  });
 
     // Always enforce baseline after plot
     applyBaseline();
