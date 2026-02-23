@@ -446,3 +446,63 @@ body{
   height:6px;
   background: rgba(44,58,92,0.25);
 }
+/* Target month block */
+.pc-target-wrap{
+  margin-top: 12px;
+}
+
+.pc-target-check{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  font-size: 14px;
+  user-select:none;
+  margin: 6px 0 10px;
+}
+
+.pc-move-scrub{
+  border: 1px solid rgba(44,58,92,0.12);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+}
+
+/* IMPORTANT: make the range look like a neutral track (no "filled" left side) */
+#pc-target-range{
+  width:100%;
+  margin-top: 10px;
+  accent-color: #2f3b63; /* only affects thumb in most browsers */
+}
+
+/* Custom tick track underneath */
+.pc-target-ticks{
+  position: relative;
+  height: 22px;
+  margin-top: 8px;
+}
+
+.pc-target-tick{
+  position:absolute;
+  bottom: 10px;
+  width:1px;
+  background: rgba(44,58,92,0.25);
+  transform: translateX(-0.5px);
+}
+
+.pc-target-tick.quarter{
+  height: 7px;
+}
+
+.pc-target-tick.year{
+  height: 11px;
+  background: rgba(44,58,92,0.40);
+}
+
+.pc-target-label{
+  position:absolute;
+  bottom: 0;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: rgba(44,58,92,0.70);
+  white-space: nowrap;
+}
