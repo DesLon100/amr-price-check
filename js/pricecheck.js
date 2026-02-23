@@ -1,7 +1,7 @@
 // js/pricecheck.js
 
 // ------------------------------------------------------------
-// LocationCode -> "Auction house · CITY" mapping
+// LocationCode -> "Auction house · CITY" mapping (197 entries)
 // ------------------------------------------------------------
 const LOCATION_LOOKUP = {
   "33AUBALI": "33 Auction · BALI",
@@ -11,263 +11,623 @@ const LOCATION_LOOKUP = {
   "33AUSING": "33 Auction · SINGAPORE",
   "ARTCDROU": "Artcurial · DROUOT",
   "ARTCMARR": "Artcurial · MARRAKESH",
-  "ARTCMC'": "Artcurial · (unknown)", // defensive
-  "ARTCMONC": "Artcurial · MONACO",
-  "ARTCNICE": "Artcurial · NICE",
-  "ARTCPAQU": "Artcurial · PARIS (AQUABOULEVARD)",
-  "ARTCPBRU": "Artcurial · BRUSSELS",
-  "ARTCPDRO": "Artcurial · PARIS (DROUOT)",
-  "ARTCPMAR": "Artcurial · MARRAKESH",
-  "ARTCPMON": "Artcurial · MONACO",
-  "ARTCPPAR": "Artcurial · PARIS",
-  "ARTCPRUE": "Artcurial · PARIS (RUE ...)",
-  "ARTCPYVE": "Artcurial · PARIS (YVES ...)",
-  "ARTCSTTR": "Artcurial · ST TROPEZ",
-  "ARTCSTTR2": "Artcurial · ST TROPEZ",
-  "ARTCTOKY": "Artcurial · TOKYO",
-  "ARTCTORN": "Artcurial · TORONTO",
-  "ARTCTOUQ": "Artcurial · TOUQUET",
-  "ARTCVEVE": "Artcurial · VEVEY",
-  "ARTCWINT": "Artcurial · WINTER ...",
-  "BONAAMST": "Bonhams · AMSTERDAM",
-  "BONALOND": "Bonhams · LONDON",
-  "BONAONLI": "Bonhams · ONLINE",
-  "BONAPARI": "Bonhams · PARIS",
-  "BONASANF": "Bonhams · SAN FRANCISCO",
-  "BONASDNY": "Bonhams · SYDNEY",
-  "BONASFOB": "Bonhams · SAN FRANCISCO (OAKLAND)",
-  "BONASFOC": "Bonhams · SAN FRANCISCO (CALIFORNIA)",
-  "BONASNTF": "Bonhams · SAN FRANCISCO (N. ...)",
-  "BONASTCK": "Bonhams · STOCKHOLM",
-  "BONATOKY": "Bonhams · TOKYO",
-  "BONAWHIT": "Bonhams · WHITE ...",
-  "BRUNBRUS": "Bruun Rasmussen · BRUSSELS",
-  "BRUNCOPE": "Bruun Rasmussen · COPENHAGEN",
-  "BRUNONLI": "Bruun Rasmussen · ONLINE",
-  "CHRISTHK": "Christie's · HONG KONG",
-  "CHRISTLN": "Christie's · LONDON",
-  "CHRISTNY": "Christie's · NEW YORK",
-  "CHRISTON": "Christie's · ONLINE",
-  "CHRISTPA": "Christie's · PARIS",
-  "CHRISTSP": "Christie's · SHANGHAI",
-  "CHRISTTB": "Christie's · DUBAI",
-  "CHRISTTO": "Christie's · TOKYO",
-  "CHRISTZN": "Christie's · ZURICH",
-  "DOROTHEU": "Dorotheum · VIENNA",
-  "HERMESPA": "Hermès · PARIS",
-  "KOLLERZU": "Koller · ZURICH",
-  "LELLONG": "Lelong · PARIS",
-  "PAGETBAH": "Paget · BAHRAIN",
-  "PHILLHK": "Phillips · HONG KONG",
-  "PHILLLDN": "Phillips · LONDON",
-  "PHILLNY": "Phillips · NEW YORK",
-  "PHILLONL": "Phillips · ONLINE",
-  "SOTHLND": "Sotheby's · LONDON",
-  "SOTHNY": "Sotheby's · NEW YORK",
-  "SOTHONL": "Sotheby's · ONLINE",
-  "SOTHPA": "Sotheby's · PARIS",
-  "SOTHHK": "Sotheby's · HONG KONG",
-  "SOTHZRH": "Sotheby's · ZURICH",
-  "TJANONLI": "Tajan · ONLINE",
-  "TJANPARI": "Tajan · PARIS",
-  "VANHAMCO": "Van Ham · COLOGNE",
-  "VANHAMON": "Van Ham · ONLINE"
+  "ARTCMCAR": "Artcurial · MONTE CARLO",
+  "ARTCOEUR": "Artcurial · ONLINE EUR",
+  "ARTCPARI": "Artcurial · PARIS",
+  "ARTHLAGO": "ArtHouseNG · LAGOS",
+  "AUCTONLI": "Auctionsverket · ONLINE",
+  "AUCTOSEK": "Auctionsverket · ONLINE SEK",
+  "AUCTSTOC": "Auctionsverket · STOCKHOLM",
+  "AUCTOLDD": "Auctionsverket · ONLINE DKK",
+  "AUCTOEUR": "Auctionsverket · ONLINE EUR",
+  "AUCTOUSD": "Auctionsverket · ONLINE USD",
+  "CHPOBEIJ": "Beijing Poly Intl · BEIJING",
+  "CHPOHONG": "Beijing Poly Intl · HONG KONG",
+  "BONHBRED": "Bonhams · BREDGATE",
+  "BONHEDIN": "Bonhams · EDINBURGH",
+  "BONHHONG": "Bonhams · HONG KONG",
+  "BONHLOND": "Bonhams · LONDON",
+  "BONHLOSA": "Bonhams · LOS ANGELES",
+  "BONHMARL": "Bonhams · MARLBOROUGH",
+  "BONHMELB": "Bonhams · MELBOURNE",
+  "BONHNEWY": "Bonhams · NEW YORK",
+  "BONHONLI": "Bonhams · ONLINE",
+  "BONHOAUD": "Bonhams · ONLINE AUD",
+  "BONHOHCF": "Bonhams · ONLINE CHF",
+  "BONHODKK": "Bonhams · ONLINE DKK",
+  "BONHOEUR": "Bonhams · ONLINE EUR",
+  "BONHOGBP": "Bonhams · ONLINE GBP",
+  "BONHOHKD": "Bonhams · ONLINE HKD",
+  "BONHOUSD": "Bonhams · ONLINE USD",
+  "BONHOXFO": "Bonhams · OXFORD",
+  "BONHPARI": "Bonhams · PARIS",
+  "BONHSANF": "Bonhams · SAN FRANCISCO",
+  "BONHSYDN": "Bonhams · SYDNEY",
+  "BONHBRUS": "Bonhams · BRUSSELS",
+  "BUKOHELS": "Bukowskis · HELSINKY",
+  "BUKOONLI": "Bukowskis · ONLINE",
+  "BUKOOEUR": "Bukowskis · ONLINE EUR",
+  "BUKOOSEK": "Bukowskis · ONLINE SEK",
+  "BUKOSTOC": "Bukowskis · STOCKHOLM",
+  "CHGUBEIJ": "China Guardian · BEIJING",
+  "CHGUHONG": "China Guardian · HONG KONG",
+  "CHRIAMST": "Christie's · AMSTERDAM",
+  "CHRIDOHA": "Christie's · DOHA",
+  "CHRIDUBA": "Christie's · DUBAI",
+  "CHRIGENE": "Christie's · GENEVA",
+  "CHRIHONG": "Christie's · HONG KONG",
+  "CHRILOND": "Christie's · LONDON",
+  "CHRIMILA": "Christie's · MILAN",
+  "CHRINEWY": "Christie's · NEW YORK",
+  "CHRIONLI": "Christie's · ONLINE",
+  "CHRIOHCF": "Christie's · ONLINE CHF",
+  "CHRIOEUR": "Christie's · ONLINE EUR",
+  "CHRIOGBP": "Christie's · ONLINE GBP",
+  "CHRIOHKD": "Christie's · ONLINE HKD",
+  "CHRIOUSD": "Christie's · ONLINE USD",
+  "CHRIPARI": "Christie's · PARIS",
+  "CHRISHAN": "Christie's · SHANGHAI",
+  "CHRIZURI": "Christie's · ZURICH",
+  "AGUTDROU": "Claude Aguttes · DROUOT",
+  "AGUTLYON": "Claude Aguttes · LYON",
+  "AGUTNEUI": "Claude Aguttes · NEUILLY",
+  "AGUTONLI": "Claude Aguttes · ONLINE",
+  "AGUTOEUR": "Claude Aguttes · ONLINE EUR",
+  "AGUTPARI": "Claude Aguttes · PARIS",
+  "COUEONLI": "Couer D'Alene · ONLINE",
+  "COUERENO": "Couer D'Alene · RENO",
+  "DOROGRAZ": "Dorotheum · GRAZ",
+  "DOROKLAG": "Dorotheum · KLAGENFURT",
+  "DOROLINZ": "Dorotheum · LINZ",
+  "DOROONLI": "Dorotheum · ONLINE",
+  "DOROOEUR": "Dorotheum · ONLINE EUR",
+  "DOROPRAG": "Dorotheum · PRAGUE",
+  "DOROSALZ": "Dorotheum · SALZBURG",
+  "DOROWIEN": "Dorotheum · WIEN",
+  "DOYLNEWY": "Doyle · NEW YORK",
+  "FARSCORT": "Farsetti · CORTINA",
+  "FARSMILA": "Farsetti · MILAN",
+  "FARSONLI": "Farsetti · ONLINE",
+  "FARSOEUR": "Farsetti · ONLINE EUR",
+  "FARSPRAT": "Farsetti · PRATO",
+  "HEFFONLI": "Heffel · ONLINE",
+  "HEFFOCAD": "Heffel · ONLINE CAD",
+  "HEFFTORO": "Heffel · TORONTO",
+  "HEFFVANC": "Heffel · VANCOUVER",
+  "HERINEWY": "Heritage · NEW YORK",
+  "KORNBASE": "Kornfeld · BASEL",
+  "KORNBERN": "Kornfeld · BERN",
+  "KORNONLI": "Kornfeld · ONLINE",
+  "KORNOHCF": "Kornfeld · ONLINE CHF",
+  "LARABALI": "Larasati · BALI",
+  "LARAJAKA": "Larasati · JAKARTA",
+  "LARALOND": "Larasati · LONDON",
+  "LARAOGBP": "Larasati · ONLINE GBP",
+  "LARAOSGD": "Larasati · ONLINE SGD",
+  "LARASING": "Larasati · SINGAPORE",
+  "LEMPBERL": "Lempertz · BERLIN",
+  "LEMPBRUS": "Lempertz · BRUSSELS",
+  "LEMPCOLO": "Lempertz · COLOGNE",
+  "LEMPOEUR": "Lempertz · ONLINE EUR",
+  "LJOEMELB": "Leonard Joel · MELBOURNE",
+  "LJOEONLI": "Leonard Joel · ONLINE",
+  "LJOEOAUD": "Leonard Joel · ONLINE AUD",
+  "LJOESYAR": "Leonard Joel · SOUTH YARA",
+  "LJOESYDN": "Leonard Joel · SYDNEY",
+  "LJOEWOOL": "Leonard Joel · WOOLHARA",
+  "MEETONLI": "Meeting Art · ONLINE",
+  "MEETVERC": "Meeting Art · VERCELLI",
+  "MORTMEXC": "Morton Subastas · MEXICO CITY",
+  "MORTOMXN": "Morton Subastas · ONLINE MXN",
+  "PANDFLOR": "Pandolfini · FLORENCE",
+  "PANDMILA": "Pandolfini · MILAN",
+  "PANDONLI": "Pandolfini · ONLINE",
+  "PANDOEUR": "Pandolfini · ONLINE EUR",
+  "PHILGENE": "Phillips · GENEVA",
+  "PHILHONG": "Phillips · HONG KONG",
+  "PHILLOND": "Phillips · LONDON",
+  "PHILMOSC": "Phillips · MOSCOW",
+  "PHILNEWY": "Phillips · NEW YORK",
+  "PHILONLI": "Phillips · ONLINE",
+  "PHILOHCF": "Phillips · ONLINE CHF",
+  "PHILOEUR": "Phillips · ONLINE EUR",
+  "PHILOGBP": "Phillips · ONLINE GBP",
+  "PHILOHKD": "Phillips · ONLINE HKD",
+  "PHILOIDR": "Phillips · ONLINE IDR",
+  "PHILOUSD": "Phillips · ONLINE USD",
+  "PHILPARI": "Phillips · PARIS",
+  "PHILTAIP": "Phillips · TAIPEI",
+  "PHILTOKY": "Phillips · TOKYO",
+  "RASMBRED": "Rasmussen · BREDGATE",
+  "RASMONLI": "Rasmussen · ONLINE",
+  "RASMODKK": "Rasmussen · ONLINE DKK",
+  "RAVEONLI": "Ravenel · ONLINE",
+  "RAVEONTD": "Ravenel · ONLINE NTD",
+  "RAVETAIP": "Ravenel · TAIPEI",
+  "SAFFKOCH": "Saffron Art · KOCHI",
+  "SAFFMUMB": "Saffron Art · MUMBAI",
+  "SAFFNDEL": "Saffron Art · NEW DELHI",
+  "SAFFONLI": "Saffron Art · ONLINE",
+  "SAFFOINR": "Saffron Art · ONLINE INR",
+  "SALCMANI": "Salcedo · MANILA",
+  "SALCONLI": "Salcedo · ONLINE",
+  "SALCOPHP": "Salcedo · ONLINE PHP",
+  "SEOUBUSA": "Seoul · BUSAN",
+  "SEQUDAEG": "Seoul · DAEGU",
+  "SEOUHONG": "Seoul · HONG KONG",
+  "SEOUONLI": "Seoul · ONLINE",
+  "SEOUOKRW": "Seoul · ONLINE KRW",
+  "SEOUSEUL": "Seoul · SEOUL",
+  "SMSIMELB": "Smith & Singer · MELBOURNE",
+  "SMSIONLI": "Smith & Singer · ONLINE",
+  "SMSISYDN": "Smith & Singer · SYDNEY",
+  "SOTHCOLO": "Sotheby's · COLOGNE",
+  "SOTHDOHA": "Sotheby's · DOHA",
+  "SOTHDUBA": "Sotheby's · DUBAI",
+  "SOTHGENE": "Sotheby's · GENEVA",
+  "SOTHHONG": "Sotheby's · HONG KONG",
+  "SOTHLASV": "Sotheby's · LAS VEGAS",
+  "SOTHLOND": "Sotheby's · LONDON",
+  "SOTHMIAM": "Sotheby's · MIAMI",
+  "SOTHMILA": "Sotheby's · MILAN",
+  "SOTHMCAR": "Sotheby's · MONTE CARLO",
+  "SOTHMUMB": "Sotheby's · MUMBAI",
+  "SOTHNEWY": "Sotheby's · NEW YORK",
+  "SOTHONLI": "Sotheby's · ONLINE",
+  "SOTHOCHF": "Sotheby's · ONLINE CHF",
+  "SOTHOEUR": "Sotheby's · ONLINE EUR",
+  "SOTHOGBP": "Sotheby's · ONLINE GBP",
+  "SOTHOHKD": "Sotheby's · ONLINE HKD",
+  "SOTHOIDR": "Sotheby's · ONLINE IDR",
+  "SOTHOUSD": "Sotheby's · ONLINE USD",
+  "SOTHPARI": "Sotheby's · PARIS",
+  "SOTHSING": "Sotheby's · SINGAPORE",
+  "SOTHZURI": "Sotheby's · ZURICH",
+  "SWELCAPE": "Stephan Welz · CAPE TOWN",
+  "SWELJOHA": "Stephan Welz · JOHANNESBURG",
+  "SWELONLI": "Stephan Welz · ONLINE",
+  "SWELOZAR": "Stephan Welz · ONLINE ZAR",
+  "STRACAPE": "Strauss · CAPE TOWN",
+  "STRAJOHA": "Strauss · JOHANNESBURG",
+  "STRAONLI": "Strauss · ONLINE",
+  "STRAOZAR": "Strauss · ONLINE ZAR",
+  "SWANNEWY": "Swann · NEW YORK",
+  "TAJAONLI": "Tajan · ONLINE",
+  "TAJAOEUR": "Tajan · ONLINE EUR",
+  "TAJAPARI": "Tajan · PARIS",
+  "TEHATEHR": "Tehran Auction · TEHRAN",
+  "VGRIBERL": "Villa Grisebach · BERLIN",
+  "VGRIONLI": "Villa Grisebach · ONLINE",
+  "VGRIOEUR": "Villa Grisebach · ONLINE EUR",
+  "ARTCBASE": "Artcurial · BASEL",
+  "ARTCOCHF": "Artcurial · ONLINE EUR",
+  "AUCTHELS": "Auktionsverket · HELSINKY",
+  "SOTHSAAR": "Sothebys · SAUDI ARABIA"
 };
 
-// -------------------------
-// Helpers
-// -------------------------
-function fmtGBP(n){
-  if(!Number.isFinite(n)) return "—";
-  return "£" + n.toLocaleString("en-GB", {maximumFractionDigits:0});
+// Convert "House · CITY" -> "House (City)" for tooltips
+function locationLabel(code){
+  const c = String(code || "").trim();
+  if(!c) return "—";
+  const raw = LOCATION_LOOKUP[c] || c;
+
+  if(raw.includes("·")){
+    const [houseRaw, cityRaw] = raw.split("·").map(s => s.trim());
+    const city = String(cityRaw || "")
+      .toLowerCase()
+      .replace(/\b\w/g, ch => ch.toUpperCase());
+    return `${houseRaw} (${city})`;
+  }
+  return raw;
 }
-function monthLabel(d){
-  return d.toLocaleString("en-GB", {month:"short", year:"numeric"});
+
+function fmtGBP(x){
+  if(!Number.isFinite(x)) return "—";
+  return "£" + Math.round(x).toLocaleString("en-GB");
 }
-function parseYYYYMM(str){
-  if(!str) return null;
-  const s = String(str).trim();
-  const m = s.match(/^(\d{4})(\d{2})$/);
-  if(!m) return null;
-  const y = +m[1], mo = +m[2];
-  if(mo < 1 || mo > 12) return null;
-  // Use UTC month start
-  return new Date(Date.UTC(y, mo-1, 1));
+
+function quantile(sortedArr, q){
+  if(!sortedArr.length) return NaN;
+  const pos = (sortedArr.length - 1) * q;
+  const base = Math.floor(pos);
+  const rest = pos - base;
+  if(sortedArr[base+1] === undefined) return sortedArr[base];
+  return sortedArr[base] + rest * (sortedArr[base+1] - sortedArr[base]);
 }
-function toMonthStartUTC(d){
+
+
+// Weighted quantile (used for month-weighted rolling p50)
+function weightedQuantile(values, weights, q){
+  const arr = [];
+  for(let i=0;i<values.length;i++){
+    const v = values[i];
+    const w = weights[i];
+    if(!Number.isFinite(v) || !Number.isFinite(w) || w <= 0) continue;
+    arr.push({ v, w });
+  }
+  if(!arr.length) return NaN;
+
+  arr.sort((a,b)=>a.v-b.v);
+
+  let total = 0;
+  for(const a of arr) total += a.w;
+  if(!(total > 0)) return NaN;
+
+  const target = q * total;
+  let cum = 0;
+  for(const a of arr){
+    cum += a.w;
+    if(cum >= target) return a.v;
+  }
+  return arr[arr.length-1].v;
+}
+
+function percentileRank(sortedArr, v){
+  if(!sortedArr.length || !Number.isFinite(v)) return NaN;
+  let lo = 0, hi = sortedArr.length;
+  while(lo < hi){
+    const mid = (lo + hi) >> 1;
+    if(sortedArr[mid] <= v) lo = mid + 1;
+    else hi = mid;
+  }
+  return (lo / sortedArr.length) * 100;
+}
+
+function parseYYYYMM(s){
+  const t = String(s || "").trim();
+  if(!/^\d{6}$/.test(t)) return null;
+  const y = Number(t.slice(0,4));
+  const m = Number(t.slice(4,6));
+  if(!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return null;
+  return new Date(Date.UTC(y, m-1, 1));
+}
+
+function addMonthsUTC(d, deltaMonths){
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + deltaMonths, 1));
+}
+
+function windowN(allRows, endDate, months){
+  const start = addMonthsUTC(endDate, -(months - 1));
+  return allRows.filter(r => r.date >= start && r.date <= endDate);
+}
+
+function monthKeyUTC(d){
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  return `${y}${m}`;
+}
+
+// ------------------------------------------------------------
+// Helpers for 24M rolling p50 + regression transport
+// ------------------------------------------------------------
+function monthStartUTC(d){
+  if(!(d instanceof Date)) return null;
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
 }
-function addMonthsUTC(d, n){
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth()+n, 1));
-}
-function monthDiffUTC(a, b){
-  // months between a and b (a -> b)
-  return (b.getUTCFullYear()-a.getUTCFullYear())*12 + (b.getUTCMonth()-a.getUTCMonth());
-}
-function clamp01(x){ return Math.max(0, Math.min(1, x)); }
 
-// ------------------------------------------------------------
-// Main renderer (called by app.js when user hits "Check price")
-// ------------------------------------------------------------
-function runPriceCheck({
-  elChartId = "pc-chart",
-  elBandsId = "pc-bands",
-  elStoryId = "pc-story",
-  elHeroTitleId = "pc-hero-title",
-  elHeroSubId = "pc-hero-sub",
-  elMyBubbleId = "pc-my-bubble",
-  elEqBubbleId = "pc-eq-bubble",
-  elMyDotId = "pc-my-dot",
-  elEqDotId = "pc-eq-dot",
-  elTrackId = "pc-track",
-  elMovePanelId = "pc-move-panel",
-  elMoveToggleId = "pc-move-toggle",
-  elMoveOptInId = "pc-target-optin",
-  elMoveUiWrapId = "pc-target-ui",
-  elMoveInputId = "pc-target-input",
-  elMoveHintId = "pc-target-hint",
-  elMoveCaptionId = "pc-target-caption",
+function monthIndexUTC(d){
+  return d.getUTCFullYear() * 12 + d.getUTCMonth();
+}
 
-  artistName,
+function monthFromIndexUTC(idx){
+  const y = Math.floor(idx / 12);
+  const m = idx - y * 12;
+  return new Date(Date.UTC(y, m, 1));
+}
+
+function buildMonthRangeUTC(minDate, maxDate){
+  const a = monthIndexUTC(monthStartUTC(minDate));
+  const b = monthIndexUTC(monthStartUTC(maxDate));
+  const months = [];
+  for(let i = a; i <= b; i++){
+    months.push(monthFromIndexUTC(i));
+  }
+  return months;
+}
+
+function ols(xs, ys){
+  const n = xs.length;
+  if(n < 2) return null;
+
+  let sx = 0, sy = 0, sxx = 0, sxy = 0;
+  for(let i=0;i<n;i++){
+    const x = xs[i], y = ys[i];
+    sx += x; sy += y;
+    sxx += x * x;
+    sxy += x * y;
+  }
+  const denom = (n * sxx - sx * sx);
+  if(denom === 0) return null;
+
+  const b = (n * sxy - sx * sy) / denom;
+  const a = (sy - b * sx) / n;
+  return { a, b };
+}
+
+// Movement slider (FMV) — DATE axis, bubbles show £ values
+function renderMovement(el, {
+  purchaseMonth,
+  targetMonth,
   price,
-  purchaseMonthUTC,
+  equivNow,
+  captionText = ""
+}){
+  if(!el) return;
 
-  salesRows = [] // [{dateUTC, priceGBP, locationCode, title, lotNo, house}]
-} = {}){
-
-  const elChart = document.getElementById(elChartId);
-  const elBands = document.getElementById(elBandsId);
-  const elStory = document.getElementById(elStoryId);
-  const heroTitle = document.getElementById(elHeroTitleId);
-  const heroSub = document.getElementById(elHeroSubId);
-
-  const bubMy = document.getElementById(elMyBubbleId);
-  const bubEq = document.getElementById(elEqBubbleId);
-  const dotMy = document.getElementById(elMyDotId);
-  const dotEq = document.getElementById(elEqDotId);
-  const track = document.getElementById(elTrackId);
-
-  const panel = document.getElementById(elMovePanelId);
-  const btn = document.getElementById(elMoveToggleId);
-  const optin = document.getElementById(elMoveOptInId);
-  const uiWrap = document.getElementById(elMoveUiWrapId);
-  const inp = document.getElementById(elMoveInputId);
-  const hintEl = document.getElementById(elMoveHintId);
-  const capEl = document.getElementById(elMoveCaptionId);
-
-  if(!elChart) return;
-
-  // ---- Hero copy (already handled upstream, but defensive)
-  if(heroTitle) heroTitle.textContent = "My Artwork";
-  if(heroSub){
-    const pMonth = purchaseMonthUTC ? monthLabel(purchaseMonthUTC) : "";
-    heroSub.textContent = `${artistName || ""} · ${fmtGBP(price)} · ${pMonth}`.replace(/\s+·\s+·/g," · ").trim();
+  if(!(purchaseMonth instanceof Date) || !(targetMonth instanceof Date)){
+    el.innerHTML = "";
+    return;
+  }
+  if(!Number.isFinite(price) || !Number.isFinite(equivNow)){
+    el.innerHTML = "";
+    return;
   }
 
-  // ---- Prepare scatter data
-  const ptsX = [];
-  const ptsY = [];
-  const ptsText = [];
-  const ptsLoc = [];
+  // Ensure month-start UTC
+  const x0 = monthStartUTC(purchaseMonth);
+  const x1 = monthStartUTC(targetMonth);
 
-  for(const r of salesRows){
-    if(!r || !r.dateUTC || !Number.isFinite(r.priceGBP)) continue;
-    ptsX.push(r.dateUTC);
-    ptsY.push(r.priceGBP);
+  // Rail range: a little padding left/right (in months)
+  const minX = (x0 < x1) ? addMonthsUTC(x0, -6) : addMonthsUTC(x1, -6);
+  const maxX = (x0 > x1) ? addMonthsUTC(x0,  6) : addMonthsUTC(x1,  6);
 
-    const loc = LOCATION_LOOKUP[r.locationCode] || r.locationCode || "";
-    ptsLoc.push(loc);
+  const ann = [
+    {
+      x: x0, y: 0,
+      xref:"x", yref:"y",
+      text: `My Artwork<br><b>${fmtGBP(price)}</b>`,
+      showarrow:false,
+      xanchor:"center",
+      yanchor:"bottom",
+      yshift: 18,
+      align:"center",
+      font:{size:12, color:"#111"},
+      bgcolor:"#fee7b1",
+      bordercolor:"#2c3a5c",
+      borderwidth:2,
+      borderpad:6
+    },
+    {
+      x: x1, y: 0,
+      xref:"x", yref:"y",
+      text: `Revaluation<br><b>${fmtGBP(equivNow)}</b>`,
+      showarrow:false,
+      xanchor:"center",
+      yanchor:"bottom",
+      yshift: 18,
+      align:"center",
+      font:{size:12, color:"#fff"},
+      bgcolor:"#2c3a5c",
+      bordercolor:"#2c3a5c",
+      borderwidth:2,
+      borderpad:6
+    }
+  ];
 
-    const title = (r.title || "").trim();
-    const lot = r.lotNo ? `Lot ${r.lotNo}` : "";
-    const house = (r.house || "").trim();
+  Plotly.newPlot(el, [
+    // baseline rail
+    {
+      x:[minX, maxX], y:[0,0],
+      mode:"lines",
+      line:{width:12,color:"rgba(44,58,92,0.10)"},
+      hoverinfo:"skip",
+      showlegend:false
+    },
 
-    ptsText.push(
-      `${title ? `<b>${title}</b><br>` : ""}` +
-      `${lot ? `${lot}<br>` : ""}` +
-      `${house ? `${house}<br>` : ""}` +
-      `${loc ? `${loc}<br>` : ""}` +
-      `${monthLabel(r.dateUTC)}<br>` +
-      `<b>${fmtGBP(r.priceGBP)}</b>`
-    );
-  }
+    // My Artwork dot (date positioned)
+    {
+      x:[x0], y:[0],
+      mode:"markers",
+      marker:{size:12,color:"#fee7b1",line:{width:3,color:"#2c3a5c"}},
+      hoverinfo:"skip",
+      showlegend:false
+    },
 
-  // ---- Rolling median (p50) and regression data (precomputed upstream in data.js or app.js)
-  // Expect globals or functions in data.js:
-  // - buildMonthlyP50(salesRows) -> {dates:[], vals:[]}
-  // - regressionLine(dates, vals) -> {dates:[], vals:[]}
-  const p50 = (typeof buildMonthlyP50 === "function") ? buildMonthlyP50(salesRows) : {dates:[], vals:[]};
-  const p50Dates = p50.dates || [];
-  const p50Vals  = p50.vals  || [];
+    // Revaluation dot (date positioned)
+    {
+      x:[x1], y:[0],
+      mode:"markers",
+      marker:{size:11,color:"#2c3a5c"},
+      hoverinfo:"skip",
+      showlegend:false
+    }
+  ],{
+    margin:{l:22,r:22,t:62,b:38},
+    xaxis:{
+      type:"date",
+      range:[minX, maxX],
+      showgrid:false,
+      zeroline:false,
+      showline:false,
+      ticks:"outside",
+      ticklen:4,
+      tickformat:"%Y",
+      dtick:"M24" // every 2 years; change to M12 if you want annual
+    },
+    yaxis:{visible:false, range:[-1.2, 0.9]},
+    annotations: ann,
+    paper_bgcolor:"rgba(0,0,0,0)",
+    plot_bgcolor:"rgba(0,0,0,0)"
+  },{displayModeBar:false, responsive:true});
 
-  const reg = (typeof regressionLine === "function") ? regressionLine(p50Dates, p50Vals) : {dates:[], vals:[]};
-  const regDates = reg.dates || [];
-  const regVals  = reg.vals  || [];
+  const capEl = document.getElementById("pc-move-caption");
+  if(capEl) capEl.textContent = captionText;
+}
+// CSV fields (coming cleanly from data.js)
+function getLocationCode(r){ return String(r.LocationCode ?? "").trim(); }
+function getLotNo(r){ return String(r.LotNo ?? "").trim() || "—"; }
+function getSaleURL(r){ return String(r.SaleURL ?? "").trim(); }
 
-  // ---- Main scatter trace
+export function runPriceCheck({
+  workbench,
+  artistId,
+  price,
+  myMonthYYYYMM,
+  yScale,
+  elChart
+}){
+  const all = workbench.getLotRows()
+    .filter(r => r.id === artistId && Number.isFinite(r.price) && r.date)
+    .sort((a,b)=>a.date-b.date);
+
+  if(all.length < 10) throw new Error("Not enough auction history.");
+
+  const artworkDate = parseYYYYMM(myMonthYYYYMM) || all[all.length-1].date;
+  const purchaseMonth = monthStartUTC(artworkDate);
+  const latestDate  = all[all.length-1].date;
+
+  const TRANSPORT_WINDOW_MONTHS = 24;
+  const MIN_SALES_IN_WINDOW = 10;
+
+  // ------------------------------------------------------------
+  // Scatter universe
+  // ------------------------------------------------------------
+  const x = all.map(r=>r.date);
+  const y = all.map(r=>r.price);
+
+  const customdata = all.map(r => [
+    locationLabel(getLocationCode(r)),
+    getLotNo(r),
+    getSaleURL(r)
+  ]);
+
+  const hovertemplate =
+    "%{x|%b %Y}<br>" +
+    "<b>£%{y:,.0f}</b><br>" +
+    "%{customdata[0]}<br>" +
+    "Lot %{customdata[1]}" +
+    "<extra>Click dot to open sale</extra>";
+
   const baseTrace = {
-    x: ptsX,
-    y: ptsY,
+    x, y, customdata,
     type:"scattergl",
     mode:"markers",
-    marker:{
-      size:7,
-      color:"#2f3b63",   // DARK by default
-      opacity:0.85
-    },
-    hovertemplate: "%{text}<extra></extra>",
-    text: ptsText,
+    marker:{size:6, color:"#2f3b63"},
+    hovertemplate,
     showlegend:false,
     meta:"pc_base"
   };
 
-  // IMPORTANT FIX:
-  // Make p50 + regression ALSO scattergl so they draw ABOVE the dots (same canvas).
+  // ------------------------------------------------------------
+  // Rolling 24M p50 + regression
+  // ------------------------------------------------------------
+  const months = buildMonthRangeUTC(all[0].date, all[all.length-1].date);
+  const allM = all.map(r => ({ ...r, _m: monthStartUTC(r.date) }));
+
+  let startPtr = 0;
+  let endPtr = 0;
+
+  const p50Dates = [];
+  const p50Vals  = [];
+  const p50T     = [];
+  const monthToT = new Map();
+
+  for(let i=0;i<months.length;i++){
+    const endMonth = months[i];
+    const startMonth = addMonthsUTC(endMonth, -(TRANSPORT_WINDOW_MONTHS - 1));
+
+    while(endPtr < allM.length && allM[endPtr]._m <= endMonth) endPtr++;
+    while(startPtr < allM.length && allM[startPtr]._m < startMonth) startPtr++;
+
+    const win = allM.slice(startPtr, endPtr);
+    if(win.length < MIN_SALES_IN_WINDOW) continue;
+
+    // Month-weighted p50:
+    // - Within each 24M window, each month is given broadly equal influence,
+    //   so dense months don't dominate the median.
+    // - A small floor prevents very thin months (1–2 sales) from over-driving the result.
+    const MIN_SALES_PER_MONTH = 5;
+
+    const monthCounts = new Map();
+    for(const r of win){
+      const k = monthKeyUTC(r._m);
+      monthCounts.set(k, (monthCounts.get(k) || 0) + 1);
+    }
+
+    const vals = [];
+    const wts  = [];
+    for(const r of win){
+      const v = r.price;
+      if(!Number.isFinite(v)) continue;
+      const k = monthKeyUTC(r._m);
+      const c = monthCounts.get(k) || 1;
+      vals.push(v);
+      wts.push(1 / Math.max(c, MIN_SALES_PER_MONTH));
+    }
+    if(vals.length < MIN_SALES_IN_WINDOW) continue;
+
+    const med = weightedQuantile(vals, wts, 0.5);
+    if(!Number.isFinite(med) || med <= 0) continue;
+
+    p50Dates.push(endMonth);
+    p50Vals.push(med);
+    p50T.push(i);
+    monthToT.set(monthKeyUTC(endMonth), i);
+  }
+
+  let reg = null;
+  if(p50T.length >= 2){
+    reg = ols(p50T, p50Vals.map(v => Math.log(v)));
+  }
+
+  const regDates = [];
+  const regVals  = [];
+  if(reg){
+    for(let i=0;i<months.length;i++){
+      const v = Math.exp(reg.a + reg.b * i);
+      if(Number.isFinite(v) && v > 0){
+        regDates.push(months[i]);
+        regVals.push(v);
+      }
+    }
+  }
+
+  // IMPORTANT: SVG traces for lines so they draw above WebGL dots
   const p50Trace = (p50Dates.length >= 2) ? {
-    x: p50Dates,
-    y: p50Vals,
-    type:"scattergl",
+    x:p50Dates,
+    y:p50Vals,
+    type:"scatter",
     mode:"lines",
     line:{width:3.5, color:"rgba(47,59,99,0.45)"},
-    hovertemplate:"24M rolling median (p50, month-weighted)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
+    hovertemplate:"24M rolling median (p50)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
     showlegend:false,
-    visible:false,          // FIX: hidden until FMV opened
+    visible:false,
     meta:"pc_p50_24"
   } : null;
 
   const regTrace = (regDates.length >= 2) ? {
-    x: regDates,
-    y: regVals,
-    type:"scattergl",
+    x:regDates,
+    y:regVals,
+    type:"scatter",
     mode:"lines",
     line:{width:4.5, color:"rgba(47,59,99,0.90)"},
     hovertemplate:"Trend line (regression through rolling p50)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
     showlegend:false,
-    visible:false,          // FIX: hidden until FMV opened
+    visible:false,
     meta:"pc_p50_reg"
   } : null;
 
   const myArtworkTrace = Number.isFinite(price) ? {
-    x:[purchaseMonthUTC],
+    x:[purchaseMonth],
     y:[price],
     type:"scattergl",
     mode:"markers",
     marker:{size:14, color:"#fee7b1", line:{width:3, color:"#2c3a5c"}},
     hovertemplate:`My Artwork<br>%{x|%b %Y}<br><b>${fmtGBP(price)}</b><extra></extra>`,
     showlegend:false,
-    meta:"pc_my"
+    meta:"pc_myartwork"
   } : null;
 
-  // Placeholder for revaluation dot (updated later)
+  // Revaluation dot on scatter (hidden until FMV opened; updated if target month used)
   const revalTrace = {
-    x:[purchaseMonthUTC],
-    y:[price],
+    x:[monthStartUTC(latestDate)],
+    y:[NaN],
     type:"scattergl",
     mode:"markers",
-    marker:{size:12, color:"#2f3b63", line:{width:3, color:"#ffffff"}},
-    hovertemplate:`Revaluation<br>%{x|%b %Y}<br><b>${fmtGBP(price)}</b><extra></extra>`,
+    marker:{size:12, color:"#2c3a5c"},
+    hovertemplate:"Revaluation<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
     showlegend:false,
-    visible:true,
+    visible:false,
     meta:"pc_reval"
   };
 
@@ -277,103 +637,61 @@ function runPriceCheck({
   if(myArtworkTrace) traces.push(myArtworkTrace);
   traces.push(revalTrace);
 
-  // ---- Layout
-  const layout = {
-    margin:{l:60, r:20, t:10, b:50},
+  const plotPromise = Plotly.newPlot(elChart, traces, {
+    margin:{l:56,r:22,t:26,b:48},
+    yaxis:{type:(yScale==="log")?"log":"linear"},
+    xaxis:{type:"date"},
+    hovermode:"closest",
     paper_bgcolor:"rgba(0,0,0,0)",
-    plot_bgcolor:"#ffffff",
-    xaxis:{
-      type:"date",
-      showgrid:false,
-      ticks:"outside",
-      ticklen:6
-    },
-    yaxis:{
-      type:"log",
-      tickformat:",",
-      showgrid:true,
-      gridcolor:"rgba(0,0,0,0.08)",
-      zeroline:false
-    }
-  };
+    plot_bgcolor:"rgba(0,0,0,0)"
+  }, {responsive:true, displayModeBar:false});
 
-  // ---- Plot
-  const plotPromise = Plotly.newPlot(elChart, traces, layout, {displayModeBar:false, responsive:true});
+  // Enable click-through to sale page
+  elChart.on?.("plotly_click", (ev) => {
+    const pt = ev?.points?.[0];
+    const url = pt?.customdata?.[2];
+    if(url) window.open(url, "_blank", "noopener,noreferrer");
+  });
 
   // ------------------------------------------------------------
-  // Sliding FMV bar: dot + bubbles
+  // Purchase percentile (unchanged; used elsewhere in UI)
   // ------------------------------------------------------------
-  function setHint(msg){
-    if(hintEl) hintEl.textContent = msg || "";
-  }
+  const thenUniverse = all.filter(r => r.date <= artworkDate);
+  const thenPricesAll = thenUniverse.map(r=>r.price).sort((a,b)=>a-b);
+  const pct = percentileRank(thenPricesAll, price);
 
-  function computeEquivAtMonth(targetMonthUTC){
-    // Uses rolling median regression slope approximation through p50 regression
-    // For simplicity, reuse regression line values by month (if available)
-    if(!Number.isFinite(price) || !purchaseMonthUTC) return null;
+  // ------------------------------------------------------------
+  // FMV translation: implied value at any target month
+  // ------------------------------------------------------------
+  function impliedValueAt(targetMonthUTC){
+    if(!reg || !Number.isFinite(price) || price <= 0) return null;
 
-    const i0 = regDates.findIndex(d => +toMonthStartUTC(d) === +toMonthStartUTC(purchaseMonthUTC));
-    const it = regDates.findIndex(d => +toMonthStartUTC(d) === +toMonthStartUTC(targetMonthUTC));
-    if(i0 < 0 || it < 0) return null;
+    const tInput  = monthToT.get(monthKeyUTC(purchaseMonth));
+    const tTarget = monthToT.get(monthKeyUTC(monthStartUTC(targetMonthUTC)));
 
-    const pInput  = regVals[i0];
-    const pTarget = regVals[it];
+    if(!Number.isFinite(tInput) || !Number.isFinite(tTarget)) return null;
+
+    const winInput  = windowN(all, purchaseMonth, TRANSPORT_WINDOW_MONTHS);
+    const winTarget = windowN(all, monthStartUTC(targetMonthUTC), TRANSPORT_WINDOW_MONTHS);
+
+    if(winInput.length < MIN_SALES_IN_WINDOW || winTarget.length < MIN_SALES_IN_WINDOW) return null;
+
+    const pInput  = Math.exp(reg.a + reg.b * tInput);
+    const pTarget = Math.exp(reg.a + reg.b * tTarget);
+
     if(!Number.isFinite(pInput) || !Number.isFinite(pTarget) || pInput <= 0 || pTarget <= 0) return null;
 
     return price * (pTarget / pInput);
   }
 
-  function pctFromMonths(d){
-    // percent along the full chart x-range based on actual plot xaxis range
-    const gd = elChart;
-    if(!gd || !gd.layout || !gd.layout.xaxis) return 50;
+  const equivLatest = impliedValueAt(monthStartUTC(latestDate));
 
-    const xr = gd.layout.xaxis.range;
-    if(!xr || xr.length < 2) return 50;
+  // Your headline copy for the section
+  const FMV_COPY =
+    "Fair market value is best estimated from the market’s central tendency, not its extremes.\n" +
+    "This module calculates a 24-month rolling median (p50) of auction prices and fits a trend line.\n" +
+    "We then revalue your purchase price by the movement of that trend from your purchase date.";
 
-    const minD = new Date(xr[0]);
-    const maxD = new Date(xr[1]);
-    const denom = (+maxD - +minD) || 1;
-    const v = (+d - +minD) / denom;
-    return clamp01(v) * 100;
-  }
-
-  function updateRevalDot(targetMonthUTC){
-    const equiv = computeEquivAtMonth(targetMonthUTC);
-    if(!Number.isFinite(equiv)) return;
-
-    // update reval trace point
-    const gd = elChart;
-    if(!gd || !gd.data) return;
-    const idx = gd.data.findIndex(t => t && t.meta === "pc_reval");
-    if(idx >= 0){
-      Plotly.restyle(gd, {x:[[targetMonthUTC]], y:[[equiv]]}, [idx]);
-    }
-
-    // update bubbles + dots on the FMV track
-    if(track && dotMy && dotEq && bubMy && bubEq){
-      const myLeft = Math.max(0, Math.min(100, pctFromMonths(purchaseMonthUTC)));
-      const eqLeft = Math.max(0, Math.min(100, pctFromMonths(targetMonthUTC)));
-
-      // FIX: clamp bubbles so they don't fall off edges
-      const dotMyLeft = Math.max(0, Math.min(100, myLeft));
-      const dotEqLeft = Math.max(0, Math.min(100, eqLeft));
-      const bubMyLeft = Math.max(6, Math.min(94, myLeft));
-      const bubEqLeft = Math.max(6, Math.min(94, eqLeft));
-
-      dotMy.style.left = `${dotMyLeft}%`;
-      dotEq.style.left = `${dotEqLeft}%`;
-      bubMy.style.left = `${bubMyLeft}%`;
-      bubEq.style.left = `${bubEqLeft}%`;
-
-      if(bubMy) bubMy.querySelector(".val").textContent = fmtGBP(price);
-      if(bubEq) bubEq.querySelector(".val").textContent = fmtGBP(equiv);
-    }
-  }
-
-  // ------------------------------------------------------------
-  // FMV panel (open/close) + optional target month input
-  // ------------------------------------------------------------
   plotPromise.then(() => {
     const gd = elChart;
 
@@ -381,142 +699,156 @@ function runPriceCheck({
     const LIGHT_DOT = "#9bb7e0";
 
     const data = (gd && gd.data) ? gd.data : [];
-    const idxBase  = data.findIndex(t => t && t.meta === "pc_base");
-    const idxReval = data.findIndex(t => t && t.meta === "pc_reval");
+    const idxBase = data.findIndex(t => t && t.meta === "pc_base");
     const idxP50  = data.findIndex(t => t && t.meta === "pc_p50_24");
     const idxReg  = data.findIndex(t => t && t.meta === "pc_p50_reg");
+    const idxRev  = data.findIndex(t => t && t.meta === "pc_reval");
 
-    // default target month = latest month in regDates (or last sale month)
-    const latestMonth = (regDates && regDates.length) ? toMonthStartUTC(regDates[regDates.length-1]) :
-      (ptsX && ptsX.length ? toMonthStartUTC(ptsX[ptsX.length-1]) : toMonthStartUTC(purchaseMonthUTC));
+    let btn = document.getElementById("pc-move-toggle");
+    const panel  = document.getElementById("pc-move");
+    const moveEl = document.getElementById("pc-move-chart");
 
-    function renderFMV(targetMonthUTC){
-      const equiv = computeEquivAtMonth(targetMonthUTC);
-      if(!Number.isFinite(equiv)) return;
+    const optin = document.getElementById("pc-add-target");
+    const box   = document.getElementById("pc-target-ui");
+    const input = document.getElementById("pc-target-month");
+    const hint  = document.getElementById("pc-target-hint");
 
-      updateRevalDot(targetMonthUTC);
-
-      // Also update story panel if present
-      if(elStory){
-        elStory.innerHTML = buildStoryHTML({
-          artistName,
-          purchaseMonthUTC,
-          targetMonthUTC: targetMonthUTC,
-          price,
-          equivValue: equiv
-        });
-      }
-
-      if(capEl){
-        capEl.textContent = "For retrospective valuations, add target month to calculate.";
-      }
-
-      updateRevalDot(targetMonthUTC);
+    const contextEl = document.getElementById("pc-context-text");
+    if(contextEl){
+      contextEl.textContent = FMV_COPY;
+      contextEl.style.whiteSpace = "pre-line";
     }
 
-    function openPanel(){
-      panel.classList.remove("hidden");
-      btn.setAttribute("aria-expanded", "true");
-      const chev = btn.querySelector(".chev");
-      if(chev) chev.textContent = "▴";
+    if(!btn || !panel || !moveEl) return;
 
-      // LIGHT BLUE dots on FMV open
-      if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": LIGHT_DOT }, [idxBase]);
-      // show median + regression on FMV open
-      if(idxP50 >= 0) Plotly.restyle(gd, { visible: true }, [idxP50]);
-      if(idxReg >= 0) Plotly.restyle(gd, { visible: true }, [idxReg]);
+    // Kill previous click listeners by cloning the toggle button
+    const btnClone = btn.cloneNode(true);
+    btn.parentNode.replaceChild(btnClone, btn);
+    btn = btnClone;
 
-      renderFMV(latestMonth);
+    const monthLabel = (d) =>
+      d.toLocaleString("en-GB", { month:"short", year:"numeric", timeZone:"UTC" });
 
+    const clearTargetUI = () => {
       if(optin) optin.checked = false;
-      if(uiWrap) uiWrap.classList.add("hidden");
-      if(inp) inp.value = "";
-      setHint("Enter a month in YYYYMM.");
-    }
+      if(box) box.classList.add("hidden");
+      if(input) input.value = "";
+      if(hint) hint.textContent = "";
+    };
 
-    function closePanel(){
+    const setRevalDot = (dUTC, val, visible) => {
+      if(idxRev < 0) return;
+      const x = dUTC ? [monthStartUTC(dUTC)] : [monthStartUTC(latestDate)];
+      const y = (Number.isFinite(val)) ? [val] : [NaN];
+      Plotly.restyle(gd, { x, y, visible: !!visible }, [idxRev]);
+    };
+
+    const applyBaseline = () => {
+      if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": DARK_DOT }, [idxBase]);
+      if(idxP50  >= 0) Plotly.restyle(gd, { visible:false }, [idxP50]);
+      if(idxReg  >= 0) Plotly.restyle(gd, { visible:false }, [idxReg]);
+      setRevalDot(latestDate, NaN, false);
+
       panel.classList.add("hidden");
       btn.setAttribute("aria-expanded", "false");
       const chev = btn.querySelector(".chev");
       if(chev) chev.textContent = "▾";
 
-      // revert dots on close
-      if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": DARK_DOT }, [idxBase]);
-      // hide median + regression on FMV close
-      if(idxP50 >= 0) Plotly.restyle(gd, { visible: false }, [idxP50]);
-      if(idxReg >= 0) Plotly.restyle(gd, { visible: false }, [idxReg]);
+      moveEl.innerHTML = "";
+      clearTargetUI();
+    };
 
-      if(optin) optin.checked = false;
-      if(uiWrap) uiWrap.classList.add("hidden");
-      if(inp) inp.value = "";
-      setHint("");
-    }
+    const renderLatest = () => {
+      if(Number.isFinite(equivLatest)){
+        renderMovement(moveEl, {
+  purchaseMonth,
+  targetMonth: monthStartUTC(latestDate),
+  price,
+  equivNow: equivLatest,
+  captionText: "For retrospective valuations, add target month to calculate."
+});
+      } else {
+        moveEl.innerHTML = "";
+      }
+      setRevalDot(latestDate, equivLatest, true);
+    };
+
+    const applyMovementOn = () => {
+      if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": LIGHT_DOT }, [idxBase]);
+      if(idxP50  >= 0) Plotly.restyle(gd, { visible:true }, [idxP50]);
+      if(idxReg  >= 0) Plotly.restyle(gd, { visible:true }, [idxReg]);
+
+      panel.classList.remove("hidden");
+      btn.setAttribute("aria-expanded", "true");
+      const chev = btn.querySelector(".chev");
+      if(chev) chev.textContent = "▴";
+
+      renderLatest();
+      clearTargetUI();
+    };
 
     btn.addEventListener("click", () => {
       const isOpen = btn.getAttribute("aria-expanded") === "true";
-      if(isOpen) closePanel();
-      else openPanel();
+      if(isOpen) applyBaseline();
+      else applyMovementOn();
     });
 
-    function parseTarget(){
-      const d = parseYYYYMM(inp && inp.value);
-      if(!d) return null;
-      return toMonthStartUTC(d);
-    }
-
-    if(optin){
+    if(optin && box){
       optin.onchange = () => {
         const on = !!optin.checked;
-        if(uiWrap) uiWrap.classList.toggle("hidden", !on);
+        box.classList.toggle("hidden", !on);
 
         if(!on){
-          renderFMV(latestMonth);
+          renderLatest();
+          if(hint) hint.textContent = "";
+          if(input) input.value = "";
           return;
         }
 
-        setHint("Enter a month in YYYYMM.");
-        const d = parseTarget();
-        if(d) renderFMV(d);
+        if(hint) hint.textContent = "Enter a month in YYYYMM.";
       };
     }
 
-    if(inp){
-      inp.addEventListener("input", () => {
-        if(!(optin && optin.checked)) return;
+    if(input){
+      input.addEventListener("input", () => {
+        if(!optin || !optin.checked) return;
 
-        const d = parseTarget();
+        const d = parseYYYYMM(input.value);
         if(!d){
-          setHint("Enter a month in YYYYMM.");
+          if(hint) hint.textContent = "Use YYYYMM (e.g. 201906).";
           return;
         }
 
-        setHint(`Target set to ${monthLabel(d)}.`);
-        renderFMV(d);
+        // Clamp into available month range
+        const minD = months[0];
+        const maxD = months[months.length - 1];
+        const d2 = (d < minD) ? minD : (d > maxD ? maxD : d);
+
+        const equiv = impliedValueAt(d2);
+        if(!Number.isFinite(equiv)){
+          if(hint) hint.textContent = "Not enough auction activity around one of the selected dates.";
+          setRevalDot(d2, NaN, true);
+          moveEl.innerHTML = "";
+          return;
+        }
+
+        renderMovement(moveEl, {
+  purchaseMonth,
+  targetMonth: d2,
+  price,
+  equivNow: equiv,
+  captionText: "For retrospective valuations, add target month to recalculate."
+});
+
+        setRevalDot(d2, equiv, true);
+
+        if(hint) hint.textContent = `Target set to ${monthLabel(d2)}.`;
       });
     }
 
-    // initial default: keep dots dark, keep p50/reg hidden, set reval dot to latest
-    renderFMV(latestMonth);
+    // Always baseline after each run
+    applyBaseline();
   });
 
-  return { ok:true };
-}
-
-// ------------------------------------------------------------
-// Story builder (simple; your app.js may override)
-// ------------------------------------------------------------
-function buildStoryHTML({artistName, purchaseMonthUTC, targetMonthUTC, price, equivValue} = {}){
-  const a = artistName || "";
-  const pm = purchaseMonthUTC ? monthLabel(purchaseMonthUTC) : "";
-  const tm = targetMonthUTC ? monthLabel(targetMonthUTC) : "";
-  const p = fmtGBP(price);
-  const e = fmtGBP(equivValue);
-
-  return `
-    <div class="pc-story">
-      <div class="pc-story-title">${a}</div>
-      <div class="pc-story-line">Purchase: <b>${p}</b> · ${pm}</div>
-      <div class="pc-story-line">Revaluation: <b>${e}</b> · ${tm}</div>
-    </div>
-  `;
+  return { pct, equivNow: equivLatest, plotPromise };
 }
