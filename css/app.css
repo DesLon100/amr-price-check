@@ -497,3 +497,6 @@ body{
 .js-plotly-plot .annotation text{
   font-weight:600;
 }
+.pc-bands-chart{
+  overflow: visible; /* allows bubbles to show outside plot area */
+}
