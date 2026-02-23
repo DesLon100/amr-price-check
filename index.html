@@ -96,10 +96,24 @@
         </div>
 
         <!-- Collapsible movement -->
-        <div id="pc-move" class="pc-bands hidden">
-          <div id="pc-move-chart" class="pc-bands-chart"></div>
-          <div id="pc-move-caption" class="pc-bands-caption"></div>
-        </div>
+        <!-- Collapsible movement -->
+<div id="pc-move" class="pc-bands hidden">
+
+  <!-- NEW: drag-to-date scrubber -->
+  <div class="pc-move-scrub">
+    <div class="pc-move-scrub-top">
+      <span class="muted">Target month:</span>
+      <strong id="pc-target-label">—</strong>
+      <button id="pc-target-reset" class="btn ghost" type="button" style="margin-left:auto;padding:6px 10px;">
+        Today
+      </button>
+    </div>
+    <input id="pc-target-range" type="range" min="0" max="0" step="1" value="0" />
+  </div>
+
+  <div id="pc-move-chart" class="pc-bands-chart"></div>
+  <div id="pc-move-caption" class="pc-bands-caption"></div>
+</div>
 
         <!-- Back button -->
         <div class="pc-actions">
