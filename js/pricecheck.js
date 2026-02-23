@@ -673,11 +673,12 @@ export function runPriceCheck({
     // Context paragraph under FMV header
     const contextEl = document.getElementById("pc-context-text");
 
-    // Target month UI (checkbox + input)
-    const optin = document.getElementById("pc-add-target");
-    const box = document.getElementById("pc-target-box") || null;
-    const input = document.getElementById("pc-target-input") || null;
-    const status = document.getElementById("pc-target-status") || null;
+   
+   // Target month UI (MATCHES YOUR HTML)
+const optin  = document.getElementById("pc-add-target");     // checkbox
+const box    = document.getElementById("pc-target-ui");      // hidden container
+const input  = document.getElementById("pc-target-month");   // YYYYMM input
+const status = document.getElementById("pc-target-hint");    // hint text
 
     if(!btn || !panel) return;
 
@@ -695,8 +696,8 @@ export function runPriceCheck({
       if(!contextEl) return;
       // You asked for this exact paragraph
       contextEl.innerHTML =
-        "Fair market value is best estimated from the market’s central tendency, not its extremes.<br>" +
-        "This module calculates a 24-month rolling median (p50) of auction prices and fits a trend line to represent the artist’s underlying market level.<br>" +
+        "Fair market value is best estimated from the market’s central tendency, not its extremes." +
+        "This module calculates a 24-month rolling median (p50) of auction prices and fits a trend line to represent the artist’s underlying market level." +
         "We then revalue your purchase price by the movement of that trend from your purchase date.";
     };
 
@@ -773,20 +774,19 @@ export function runPriceCheck({
     };
 
     const parseTargetInputMonth = () => {
-      if(!input) return null;
-      const d = parseYYYYMM(input.value);
-      return d ? monthStartUTC(d) : null;
-    };
+  if(!input) return null;
+  return parseYYYYMM(input.value); // already returns month-start DateUTC or null
+};
 
     const setTargetStatus = (d) => {
-      if(!status) return;
-      if(!d){
-        status.textContent = "";
-        return;
-      }
-      const label = d.toLocaleString("en-GB", { month:"short", year:"numeric", timeZone:"UTC" });
-      status.textContent = `Target set to ${label}.`;
-    };
+  if(!status) return;
+  if(!d){
+    status.textContent = "";
+    return;
+  }
+  const label = d.toLocaleString("en-GB", { month:"short", year:"numeric", timeZone:"UTC" });
+  status.textContent = `Target set to ${label}.`;
+};
 
     // Set the paragraph copy once results exist
     setContextCopy();
@@ -796,36 +796,31 @@ export function runPriceCheck({
 
     // Bind “Add target month”
     if(optin){
-      optin.onchange = () => {
-        const on = !!optin.checked;
+  optin.onchange = () => {
+    const on = !!optin.checked;
 
-        if(box) box.classList.toggle("hidden", !on);
+    if(box) box.classList.toggle("hidden", !on);
 
-        if(on){
-          // If they already typed a value, apply it
-          const d = parseTargetInputMonth();
-          setTargetStatus(d);
-          if(d) renderForMonth(d);
-        } else {
-          // revert to “today”
-          setTargetStatus(null);
-          renderForMonth(monthStartUTC(latestDate));
-        }
-      };
+    if(on){
+      const d = parseTargetInputMonth();
+      setTargetStatus(d);
+      if(d) renderForMonth(d);
+    } else {
+      setTargetStatus(null);
+      renderForMonth(monthStartUTC(latestDate));
     }
+  };
+}
 
     // Bind input typing (YYYYMM)
     if(input){
-      input.addEventListener("input", () => {
-        if(!optin || !optin.checked) return;
-        const d = parseTargetInputMonth();
-        setTargetStatus(d);
-
-        if(d){
-          renderForMonth(d);
-        }
-      });
-    }
+  input.addEventListener("input", () => {
+    if(!optin || !optin.checked) return;
+    const d = parseTargetInputMonth();
+    setTargetStatus(d);
+    if(d) renderForMonth(d);
+  });
+}
 
     // Bind FMV toggle
     btn.addEventListener("click", () => {
