@@ -713,7 +713,7 @@ export function runPriceCheck({
 
       if(capEl){
         capEl.textContent =
-          "View a fair-market revaluation based on the market’s central pricing trend.";
+          "For retrospective valuations, add target month to recalculate.";
       }
     };
 
