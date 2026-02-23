@@ -1,131 +1,268 @@
-/* ---------- FMV (date-axis) slider (DOM, not Plotly) ---------- */
+// js/app.js
+import { runPriceCheck } from "./pricecheck.js?v=1";
+import { loadPriceCheckCSV } from "./data.js?v=1";
 
-.pc-bands-chart{
-  /* give room for bubbles above track + axis below */
-  height:auto !important;
-  min-height: 120px;
-}
+const el = (id) => document.getElementById(id);
+const escapeHtml = (s) =>
+  String(s).replace(/[&<>"']/g, (m) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;",
+  }[m]));
 
-.pc-fmv-row{
-  position: relative;
-  padding-top: 34px;       /* room for bubbles */
-  padding-bottom: 10px;
-}
-
-.pc-fmv-track{
-  position: relative;
-  height: 12px;
-  border-radius: 999px;
-  background: rgba(44,58,92,0.10);
-}
-
-/* dots */
-.pc-fmv-dot{
-  position:absolute;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
+function fmtGBP0(x) {
+  const n = Number(x);
+  if (!Number.isFinite(n)) return "—";
+  return "£" + Math.round(n).toLocaleString("en-GB");
 }
 
-.pc-fmv-dot-my{
-  background:#fee7b1;
-  border:3px solid #2c3a5c;
+function fmtYYYYMMLabel(yyyymm) {
+  const t = String(yyyymm || "").trim();
+  if (!/^\d{6}$/.test(t)) return "";
+  const y = Number(t.slice(0, 4));
+  const m = Number(t.slice(4, 6)) - 1;
+  if (!(y >= 1900 && m >= 0 && m <= 11)) return "";
+  const d = new Date(Date.UTC(y, m, 1));
+  return d.toLocaleString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
 }
 
-.pc-fmv-dot-eq{
-  background:#2c3a5c;
+// elements
+const file = el("file");
+const status = el("status");
+
+const pcFormCard = el("pc-form-card");
+const pcArtist = el("pc-artist");
+const pcPrice = el("pc-price");
+const pcMonth = el("pc-month");
+const pcRun = el("pc-run");
+
+const pcResults = el("pc-results");
+const pcUniverse = el("pc-universe");
+const pcLogToggle = el("pc-log");
+const pcBack = el("pc-back");
+
+const pcContextText = el("pc-context-text");
+const pcMove = el("pc-move");
+const pcMoveToggle = el("pc-move-toggle");
+
+// hero
+const heroTitleTextEl = document.querySelector(".hero-title-text");
+const heroSub = document.querySelector(".hero-sub");
+const heroDot = el("hero-dot");
+
+const defaultHeroTitle = heroTitleTextEl ? heroTitleTextEl.textContent : "";
+const defaultHeroSub = heroSub ? heroSub.textContent : "";
+
+let lastRun = null;
+let currentGraphDiv = null;
+
+function setHeroForResults({ artistName, price, purchaseMonth }) {
+  if (heroTitleTextEl) heroTitleTextEl.textContent = "My Artwork";
+  heroDot?.classList.remove("hidden");
+
+  const parts = [];
+
+  if (artistName) parts.push(artistName);
+  if (Number.isFinite(price)) parts.push(fmtGBP0(price));
+
+  // Accept raw YYYYMM directly
+  const raw = String(purchaseMonth || "").trim();
+  if (/^\d{6}$/.test(raw)) {
+    const y = Number(raw.slice(0,4));
+    const m = Number(raw.slice(4,6)) - 1;
+    const d = new Date(Date.UTC(y, m, 1));
+    const label = d.toLocaleString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
+    parts.push(label);
+  }
+
+  if (heroSub) heroSub.textContent = parts.join(" · ");
 }
 
-/* bubbles */
-.pc-fmv-bubble{
-  position:absolute;
-  top: -34px;
-  transform: translateX(-50%);
-  padding: 8px 10px;
-  border-radius: 12px;     /* rounded corners (as requested) */
-  line-height: 1.05;
-  box-shadow: 0 8px 18px rgba(0,0,0,.10);
-  border: 1px solid rgba(44,58,92,0.18);
-  white-space: nowrap;
-  max-width: 44%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+function resetHero() {
+  if (heroTitleTextEl) heroTitleTextEl.textContent = defaultHeroTitle;
+  heroDot?.classList.add("hidden");
+  if (heroSub) heroSub.textContent = defaultHeroSub;
 }
 
-/* colour-coded bubbles to match dots */
-.pc-fmv-bubble-my{
-  background: #fee7b1;
-  border-color: rgba(44,58,92,0.35);
+function setFMVContextCopy() {
+  if (!pcContextText) return;
+  pcContextText.textContent =
+    "Fair market value is best estimated from the market’s central tendency, not its extremes.<br>" +
+  "This module calculates a 24-month rolling median (p50) and fits a trend line to represent the artist’s underlying market level.<br>" +
+  "We then revalue your purchase price by the movement of that trend from your purchase date.";
 }
 
-.pc-fmv-bubble-eq{
-  background: #2c3a5c;
-  color: #fff;
-  border-color: rgba(255,255,255,0.20);
+function showForm() {
+  pcFormCard?.classList.remove("hidden");
+  pcResults?.classList.add("hidden");
+  setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
 }
 
-.pc-fmv-b1{
-  font-size: 12px;
-  font-weight: 700;
-  opacity: .95;
-}
-.pc-fmv-b2{
-  font-size: 13px;
-  font-weight: 800;
-  margin-top: 2px;
+function showResults() {
+  pcResults?.classList.remove("hidden");
+  pcFormCard?.classList.add("hidden");
+  pcResults?.scrollIntoView({ behavior: "smooth", block: "start" });
+  setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
 }
 
-/* keep bubbles inside the panel (prevents falling off edges) */
-.pc-fmv-bubble{
-  left: clamp(6%, var(--left, 50%), 94%);
+function setRankingHighlight(isOn) {
+  const gd = currentGraphDiv;
+  if (!gd?.data) return;
+
+  const metas = ["pc_highlight_then", "pc_highlight_now"];
+  const idxs = metas
+    .map((m) => gd.data.findIndex((t) => t?.meta === m))
+    .filter((i) => i >= 0);
+
+  if (!idxs.length) return;
+  Plotly.restyle(gd, { visible: isOn }, idxs);
 }
 
-/* axis */
-.pc-fmv-axis{
-  position: relative;
-  margin-top: 10px;
-  height: 18px;
-  font-size: 12px;
-  color: rgba(17,17,17,.75);
+function collapseMovePanel() {
+  pcMoveToggle?.setAttribute("aria-expanded", "false");
+  pcMove?.classList.add("hidden");
+  setRankingHighlight(false);
 }
 
-.pc-fmv-tick{
-  position:absolute;
-  bottom:0;
-  transform: translateX(-50%);
-  white-space: nowrap;
+// bind click → open url
+function bindGraphClickOnce(gd) {
+  if (!gd || gd.__pcClickBound) return;
+  gd.__pcClickBound = true;
+
+  gd.on("plotly_click", (ev) => {
+    const p = ev?.points?.[0];
+    const url = String(p?.customdata?.[2] ?? "").trim();
+
+    if (!url || !url.startsWith("http")) return;
+
+    // Always open in new TAB
+    window.open(url, "_blank");
+  });
 }
 
-.pc-fmv-tick::before{
-  content:"";
-  position:absolute;
-  left:50%;
-  transform:translateX(-50%);
-  bottom: 16px;
-  width:1px;
-  height:6px;
-  background: rgba(44,58,92,0.22);
+// load CSV
+file?.addEventListener("change", async (e) => {
+  const f = e.target.files?.[0];
+  if (!f) return;
+
+  try {
+    const text = await f.text();
+    const data = loadPriceCheckCSV(text);
+    window.__pcData = data;
+
+    if (status) {
+      status.textContent =
+        `Loaded ${data.lotRows.length.toLocaleString()} lots across ` +
+        `${data.artists.length.toLocaleString()} artists. (Local only)`;
+    }
+
+    if (pcArtist) {
+      pcArtist.innerHTML =
+        `<option value="">Select artist…</option>` +
+        data.artists
+          .map((a) => `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`)
+          .join("");
+      pcArtist.disabled = false;
+      if (data.artists[0]) pcArtist.value = data.artists[0].id;
+    }
+
+    if (pcRun) pcRun.disabled = false;
+
+    lastRun = null;
+    currentGraphDiv = null;
+    if (pcLogToggle) pcLogToggle.checked = false;
+
+    collapseMovePanel();
+    resetHero();
+    setFMVContextCopy();
+    showForm();
+  } catch (err) {
+    alert(err?.message || String(err));
+
+    if (status) status.textContent = "No dataset loaded.";
+    if (pcArtist) {
+      pcArtist.disabled = true;
+      pcArtist.innerHTML = `<option value="">Load data first…</option>`;
+    }
+    if (pcRun) pcRun.disabled = true;
+
+    lastRun = null;
+    currentGraphDiv = null;
+    collapseMovePanel();
+    resetHero();
+    showForm();
+  }
+});
+
+function doRun({ scroll = true } = {}) {
+  const artistId = pcArtist?.value || "";
+  const price = Number(pcPrice?.value);
+
+  if (!artistId) return alert("Select an artist.");
+  if (!Number.isFinite(price) || price <= 0) return alert("Enter a valid price.");
+
+  const data = window.__pcData;
+  if (!data) return alert("Load data first.");
+
+  const myMonth = (pcMonth?.value || "").trim();
+  const yScale = pcLogToggle?.checked ? "log" : "linear";
+
+  const wbLite = {
+    getLotRows: () => data.lotRows,
+    getArtistName: (id) => data.getArtistName(id),
+    getMetrics: (_id) => null,
+  };
+
+  const out = runPriceCheck({
+    workbench: wbLite,
+    artistId,
+    price,
+    myMonthYYYYMM: myMonth,
+    yScale,
+    elChart: pcUniverse,
+  });
+
+  out?.plotPromise?.then((gd) => {
+    currentGraphDiv = gd;
+    gd.__pcClickBound = false;     // allow rebind after replot
+    bindGraphClickOnce(gd);
+  });
+
+  lastRun = { artistId, price, myMonthYYYYMM: myMonth };
+
+  setHeroForResults({ artistName: data.getArtistName(artistId), price, purchaseMonth: myMonth });
+  setFMVContextCopy();
+  collapseMovePanel();
+
+  if (scroll) showResults();
 }
 
-/* Target-month UI (input box) */
-#pc-target-ui{
-  margin-top: 10px;
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(44,58,92,0.12);
-  background: rgba(255,255,255,0.75);
-}
+pcRun?.addEventListener("click", () => {
+  try { doRun({ scroll: true }); }
+  catch (err) { alert(err?.message || String(err)); }
+});
 
-#pc-target-month{
-  height: 40px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid #ddd;
-  outline: none;
-}
-#pc-target-month:focus{
-  border-color:#b8c0d3;
-  box-shadow:0 0 0 3px rgba(44,58,92,.10);
-}
+pcLogToggle?.addEventListener("change", () => {
+  if (!lastRun) return;
+  try { doRun({ scroll: false }); }
+  catch (err) { alert(err?.message || String(err)); }
+});
+
+pcMoveToggle?.addEventListener("click", () => {
+  const open = pcMoveToggle.getAttribute("aria-expanded") === "true";
+  const next = !open;
+  pcMoveToggle.setAttribute("aria-expanded", String(next));
+  pcMove?.classList.toggle("hidden", open);
+  setRankingHighlight(next);
+  if (next) setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
+});
+
+pcBack?.addEventListener("click", () => {
+  lastRun = null;
+  currentGraphDiv = null;
+  collapseMovePanel();
+  resetHero();
+  showForm();
+});
