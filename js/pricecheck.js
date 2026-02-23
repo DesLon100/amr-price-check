@@ -730,3 +730,4 @@ plotPromise.then(() => {
 });
 
 return { pct, equivNow: impliedValueAt(monthStartUTC(latestDate)), plotPromise };
+  }
