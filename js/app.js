@@ -89,9 +89,9 @@ function resetHero() {
 function setFMVContextCopy() {
   if (!pcContextText) return;
   pcContextText.textContent =
-    "We re-rank your acquisition price against the artist’s most recent 24 months of auction sales. " +
-    "If fewer works now sell above that level, fair market value has likely increased; " +
-    "if more works sell above it, fair market value has likely decreased.";
+    "Fair market value is best estimated from the market’s central tendency, not its extremes.<br>" +
+  "This module calculates a 24-month rolling median (p50) and fits a trend line to represent the artist’s underlying market level.<br>" +
+  "We then revalue your purchase price by the movement of that trend from your purchase date.";
 }
 
 function showForm() {
