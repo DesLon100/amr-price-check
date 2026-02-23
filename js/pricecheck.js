@@ -320,21 +320,57 @@ function ols(xs, ys){
 }
 
 // ------------------------------------------------------------
-// STRICT: identify ONLY the <details> disclosure whose <summary>
-// contains "See your price movement".
-// No checkbox fallback, no generic click fallback.
-// This removes the inconsistent "sometimes binds to wrong thing" behaviour.
+// Robust toggle finder:
+// Works if your UI is <details><summary>...</summary></details>
+// OR if it's a clickable element (button/a/div) with that text.
 // ------------------------------------------------------------
-function findMovementDetails(){
+function findMovementToggle(){
   const want = "see your price movement";
+
+  // 1) <details><summary>
   const summaries = Array.from(document.querySelectorAll("summary"));
   for(const s of summaries){
     const txt = (s.textContent || "").trim().toLowerCase();
     if(txt.includes(want) && s.parentElement && s.parentElement.tagName === "DETAILS"){
-      return s.parentElement;
+      return { kind:"details", el:s.parentElement };
     }
   }
+
+  // 2) clickable elements with that text
+  const candidates = Array.from(document.querySelectorAll("button, a, [role='button'], div, span"));
+  for(const el of candidates){
+    const txt = (el.textContent || "").trim().toLowerCase();
+    if(!txt) continue;
+    if(!txt.includes(want)) continue;
+
+    // Prefer something that looks like a disclosure
+    const hasAria = el.hasAttribute("aria-expanded");
+    const isClickable = (el.tagName === "BUTTON" || el.tagName === "A" || el.getAttribute("role") === "button");
+    if(hasAria || isClickable){
+      return { kind:"click", el };
+    }
+  }
+
   return null;
+}
+
+function getToggleState(t){
+  if(!t) return false;
+  if(t.kind === "details"){
+    return !!t.el.open;
+  }
+  // click-toggle: prefer aria-expanded if present
+  const a = t.el.getAttribute("aria-expanded");
+  if(a === "true") return true;
+  if(a === "false") return false;
+
+  // fallback: store state on element
+  return t.el.dataset.pcOpen === "1";
+}
+
+function setToggleStateFallback(t, open){
+  if(!t || t.kind !== "click") return;
+  t.el.dataset.pcOpen = open ? "1" : "0";
 }
 
 // Movement slider (CTA)
@@ -513,11 +549,12 @@ export function runPriceCheck({
     }
   }
 
-  // p50 + regression traces start hidden; shown only after details is opened
+  // IMPORTANT CHANGE:
+  // Use SVG "scatter" for lines so they always draw above the WebGL dots.
   const p50Trace = (p50Dates.length >= 2) ? {
     x: p50Dates,
     y: p50Vals,
-    type:"scattergl",               // IMPORTANT: keep same renderer as dots
+    type:"scatter",
     mode:"lines",
     line:{width:3.5, color:"rgba(47,59,99,0.45)"},
     hovertemplate:"24M rolling median (p50)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
@@ -529,7 +566,7 @@ export function runPriceCheck({
   const regTrace = (regDates.length >= 2) ? {
     x: regDates,
     y: regVals,
-    type:"scattergl",               // IMPORTANT: keep same renderer as dots
+    type:"scatter",
     mode:"lines",
     line:{width:4.5, color:"rgba(47,59,99,0.90)"},
     hovertemplate:"Trend line (regression through rolling p50)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
@@ -541,7 +578,7 @@ export function runPriceCheck({
   const myPctTrace = (qDates.length >= 2) ? {
     x: qDates,
     y: qVals,
-    type:"scattergl",
+    type:"scatter",
     mode:"lines",
     line:{width:2.5, dash:"dot", color:"rgba(246,189,116,0.95)"},
     hovertemplate:"My percentile (24M rolling)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
@@ -561,7 +598,7 @@ export function runPriceCheck({
     meta:"pc_myartwork"
   } : null;
 
-  // Order matters: dots first, then lines, then artwork marker last
+  // Order: dots first, then lines (SVG), then artwork last
   const traces = [];
   traces.push(baseTrace);
   if(p50Trace) traces.push(p50Trace);
@@ -614,23 +651,10 @@ export function runPriceCheck({
   }
 
   // ------------------------------------------------------------
-  // UI behaviour: SIMPLE + DETERMINISTIC
-  //
-  // Baseline (always enforced after plot renders):
-  //  - dots dark
-  //  - p50/reg hidden
-  //  - slider cleared
-  //
-  // When <details> opens:
-  //  - dots light blue
-  //  - p50 + regression visible
-  //  - slider rendered
-  //
-  // When <details> closes:
-  //  - revert baseline
+  // UI behaviour: baseline -> on toggle open -> show lines + slider
   // ------------------------------------------------------------
   plotPromise.then(() => {
-    const details = findMovementDetails();
+    const t = findMovementToggle();
 
     const DARK_DOT  = "#2f3b63";
     const LIGHT_DOT = "#9bb7e0";
@@ -638,12 +662,42 @@ export function runPriceCheck({
     const gd = elChart;
     const data = (gd && gd.data) ? gd.data : [];
 
-    const idxBase = data.findIndex(t => t && t.meta === "pc_base");
-    const idxP50  = data.findIndex(t => t && t.meta === "pc_p50_24");
-    const idxReg  = data.findIndex(t => t && t.meta === "pc_p50_reg");
-    const idxMy   = data.findIndex(t => t && t.meta === "pc_mypercentile_24");
+    const idxBase = data.findIndex(tr => tr && tr.meta === "pc_base");
+    const idxP50  = data.findIndex(tr => tr && tr.meta === "pc_p50_24");
+    const idxReg  = data.findIndex(tr => tr && tr.meta === "pc_p50_reg");
+    const idxMy   = data.findIndex(tr => tr && tr.meta === "pc_mypercentile_24");
 
     const cbPct = document.getElementById("pc-show-mypercentile"); // optional
+
+    const clearSlider = () => {
+      const moveEl = document.getElementById("pc-move-chart");
+      const capEl  = document.getElementById("pc-move-caption");
+      if(moveEl) moveEl.innerHTML = "";
+      if(capEl) capEl.textContent = "";
+    };
+
+    const renderSlider = () => {
+      const moveEl = document.getElementById("pc-move-chart");
+      const capEl  = document.getElementById("pc-move-caption");
+
+      if(!moveEl) return;
+
+      if(Number.isFinite(equivNow)){
+        renderMovement(moveEl, {
+          price,
+          equivNow,
+          captionText:
+            "Indicative value today is estimated by tracking the artist’s typical market level: " +
+            "we calculate a 24-month rolling median (p50), fit a trend line through it, " +
+            "then revalue your purchase price by the change in that trend between your purchase month and today."
+        });
+      } else {
+        moveEl.innerHTML = "";
+        if(capEl){
+          capEl.textContent = "Not enough recent auction activity to estimate an indicative value today for this artist.";
+        }
+      }
+    };
 
     const applyBaseline = () => {
       if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": DARK_DOT }, [idxBase]);
@@ -651,66 +705,57 @@ export function runPriceCheck({
       if(idxReg  >= 0) Plotly.restyle(gd, { visible:false }, [idxReg]);
       if(idxMy   >= 0) Plotly.restyle(gd, { visible:false }, [idxMy]);
       if(cbPct) cbPct.checked = false;
-
-      // Always re-query slider nodes (they may live inside <details>)
-      const moveEl = document.getElementById("pc-move-chart");
-      const capEl  = document.getElementById("pc-move-caption");
-      if(moveEl) moveEl.innerHTML = "";
-      if(capEl) capEl.textContent = "";
+      clearSlider();
     };
 
-    const applyMovementOn = () => {
+    const applyOn = () => {
       if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": LIGHT_DOT }, [idxBase]);
       if(idxP50  >= 0) Plotly.restyle(gd, { visible:true }, [idxP50]);
       if(idxReg  >= 0) Plotly.restyle(gd, { visible:true }, [idxReg]);
 
-      // Slider render (re-query nodes)
-      const moveEl = document.getElementById("pc-move-chart");
-      const capEl  = document.getElementById("pc-move-caption");
+      renderSlider();
 
-      if(moveEl){
-        if(Number.isFinite(equivNow)){
-          renderMovement(moveEl, {
-            price,
-            equivNow,
-            captionText:
-              "Indicative value today is estimated by tracking the artist’s typical market level: " +
-              "we calculate a 24-month rolling median (p50), fit a trend line through it, " +
-              "then revalue your purchase price by the change in that trend between your purchase month and today."
-          });
-        } else {
-          moveEl.innerHTML = "";
-          if(capEl){
-            capEl.textContent = "Not enough recent auction activity to estimate an indicative value today for this artist.";
-          }
-        }
-      }
-
-      // Optional percentile line checkbox: only meaningful when movement is ON
       if(cbPct && idxMy >= 0){
-        const onPctChange = () => {
+        cbPct.onchange = () => {
           Plotly.restyle(gd, { visible: cbPct.checked ? true : false }, [idxMy]);
         };
-        // Avoid double-binding if runPriceCheck is called repeatedly:
-        cbPct.onchange = onPctChange;
-        onPctChange();
+        cbPct.onchange();
       }
     };
 
-    // 1) ALWAYS force baseline after plot completes (prevents “lines appear on load”)
+    // Always enforce baseline after plot
     applyBaseline();
 
-    // 2) If the details exists and is already open, immediately apply ON state
-    if(details && details.open){
-      applyMovementOn();
+    // If toggle already open/expanded, apply ON after a tick (lets DOM settle)
+    if(getToggleState(t)){
+      setTimeout(applyOn, 0);
     }
 
-    // 3) Bind exactly one toggle handler (overwrite previous if rerun)
-    if(details){
-      details.ontoggle = () => {
-        if(details.open) applyMovementOn();
-        else applyBaseline();
-      };
+    // Bind events
+    if(t){
+      if(t.kind === "details"){
+        t.el.ontoggle = () => {
+          if(t.el.open) applyOn();
+          else applyBaseline();
+        };
+      } else {
+        // Click toggle: run AFTER click handler updates DOM/aria
+        t.el.onclick = () => {
+          setTimeout(() => {
+            const onNow = getToggleState(t);
+            // If no aria-expanded, we maintain our own state by toggling
+            if(!t.el.hasAttribute("aria-expanded")){
+              const next = !onNow;
+              setToggleStateFallback(t, next);
+              if(next) applyOn();
+              else applyBaseline();
+            } else {
+              if(onNow) applyOn();
+              else applyBaseline();
+            }
+          }, 0);
+        };
+      }
     }
   });
 
