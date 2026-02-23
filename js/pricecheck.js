@@ -685,13 +685,56 @@ export function runPriceCheck({
     const contextEl = document.getElementById("pc-context-text");
 
    
-   // Target month UI (MATCHES YOUR HTML)
-const optin  = document.getElementById("pc-add-target");     // checkbox
-const box    = document.getElementById("pc-target-ui");      // hidden container
-const input  = document.getElementById("pc-target-month");   // YYYYMM input
-const status = document.getElementById("pc-target-hint");    // hint text
+   // Target-month UI (MATCHES YOUR HTML)
+const optin  = document.getElementById("pc-add-target");   // checkbox
+const box    = document.getElementById("pc-target-ui");    // hidden container
+const input  = document.getElementById("pc-target-month"); // YYYYMM input
+const status = document.getElementById("pc-target-hint");  // hint span
 
-    if(!btn || !panel) return;
+const clearTargetUI = () => {
+  if(optin) optin.checked = false;
+  if(box) box.classList.add("hidden");
+  if(input) input.value = "";
+  if(status) status.textContent = "";
+};
+
+// show/hide + recalc
+if(optin && box){
+  optin.onchange = () => {
+    const on = !!optin.checked;
+    box.classList.toggle("hidden", !on);
+
+    if(!on){
+      if(status) status.textContent = "";
+      // revert to “today”
+      renderForTarget(monthStartUTC(latestDate));
+      return;
+    }
+
+    // if turning on, try parse immediately
+    const d = parseYYYYMM(input ? input.value : "");
+    if(d){
+      if(status) status.textContent = `Target set to ${d.toLocaleString("en-GB",{month:"short",year:"numeric",timeZone:"UTC"})}.`;
+      renderForTarget(d);
+    } else {
+      if(status) status.textContent = "Enter a target month as YYYYMM.";
+    }
+  };
+}
+
+// live input updates (only when opt-in is ON)
+if(input){
+  input.addEventListener("input", () => {
+    if(!optin || !optin.checked) return;
+    const d = parseYYYYMM(input.value);
+    if(d){
+      if(status) status.textContent = `Target set to ${d.toLocaleString("en-GB",{month:"short",year:"numeric",timeZone:"UTC"})}.`;
+      renderForTarget(d);
+    } else {
+      if(status) status.textContent = "Enter a target month as YYYYMM.";
+    }
+  });
+}
 
     // Kill old listeners on the toggle button
     const btnClone = btn.cloneNode(true);
