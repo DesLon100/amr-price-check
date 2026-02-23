@@ -350,3 +350,99 @@ body{
 .pc-move-scrub{ margin: 8px 0 10px; }
 .pc-move-scrub-top{ display:flex; gap:10px; align-items:center; margin-bottom:6px; }
 #pc-target-range{ width:100%; }
+/* Opt-in checkbox row */
+.pc-target-optin{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:10px 0 6px;
+  font-size:14px;
+  user-select:none;
+}
+.pc-target-optin input{
+  width:16px;
+  height:16px;
+}
+
+/* Scrubber container */
+.pc-move-scrub{
+  margin:8px 0 10px;
+  padding:10px 12px;
+  border:1px solid rgba(44,58,92,0.12);
+  border-radius:12px;
+  background: rgba(255,255,255,0.65);
+}
+.pc-move-scrub-top{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:8px;
+}
+
+/* Date range slider: NO "filled" track, just a neutral line + thumb */
+.pc-date-range{
+  width:100%;
+  margin:6px 0 4px;
+  -webkit-appearance:none;
+  appearance:none;
+  background:transparent;
+  height:22px; /* room for thumb */
+}
+
+/* Track (neutral, not filled) */
+.pc-date-range::-webkit-slider-runnable-track{
+  height:4px;
+  background: rgba(44,58,92,0.18);
+  border-radius:999px;
+}
+.pc-date-range::-moz-range-track{
+  height:4px;
+  background: rgba(44,58,92,0.18);
+  border-radius:999px;
+}
+
+/* Thumb */
+.pc-date-range::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  appearance:none;
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  background:#2c3a5c;
+  border:2px solid #ffffff;
+  box-shadow:0 1px 2px rgba(0,0,0,0.15);
+  margin-top:-5px; /* centers thumb on 4px track */
+}
+.pc-date-range::-moz-range-thumb{
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  background:#2c3a5c;
+  border:2px solid #ffffff;
+  box-shadow:0 1px 2px rgba(0,0,0,0.15);
+}
+
+/* Month axis under the slider */
+.pc-date-axis{
+  position:relative;
+  height:18px;
+  margin-top:4px;
+  font-size:12px;
+  color: rgba(44,58,92,0.75);
+}
+.pc-date-axis .tick{
+  position:absolute;
+  bottom:0;
+  transform: translateX(-50%);
+  white-space:nowrap;
+}
+.pc-date-axis .tick::before{
+  content:"";
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:16px;
+  width:1px;
+  height:6px;
+  background: rgba(44,58,92,0.25);
+}
