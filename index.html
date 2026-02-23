@@ -121,20 +121,30 @@
         <div class="pc-actions">
           <button id="pc-back" class="btn ghost" type="button">Back</button>
         </div>
-<section class="pc-advanced">
-  <button id="pc-structure-toggle" class="pc-toggle" aria-expanded="false">
-    Add market structure analysis <span class="chev">▾</span>
-  </button>
 
-  <div id="pc-structure-panel" class="hidden">
-    <div id="pc-structure-top" style="height:240px;"></div>
-    <div id="pc-structure-bottom" style="height:200px; margin-top:14px;"></div>
-    <div id="pc-structure-note" class="pc-note"></div>
+       <!-- NEW: Market Structure Hero -->
+<section class="pc-hero pc-hero--secondary">
+  <div class="pc-card">
+    <header class="pc-head">
+      <h2 class="pc-title">Market structure</h2>
+      <p class="pc-sub">
+        Mean vs median (24-month rolling). Use this to see whether the market is becoming more trophy-led or consolidating.
+      </p>
+    </header>
+
+    <div class="pc-body">
+      <button id="pc-structure-toggle" class="btn ghost" type="button" aria-expanded="false">
+        Open analysis <span class="chev">▾</span>
+      </button>
+
+      <div id="pc-structure-panel" class="hidden" style="margin-top:14px;">
+        <div id="pc-structure-top" style="height:260px;"></div>
+        <div id="pc-structure-bottom" style="height:210px; margin-top:14px;"></div>
+        <div id="pc-structure-note" class="pc-note"></div>
+      </div>
+    </div>
   </div>
 </section>
-      </div>
-    </section>
-  </div>
 
   <script type="module" src="js/app.js?v=1"></script>
 </body>
