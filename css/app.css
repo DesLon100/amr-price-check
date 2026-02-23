@@ -422,103 +422,78 @@ body{
   box-shadow:0 1px 2px rgba(0,0,0,0.15);
 }
 
-/* Month axis under the slider */
-.pc-date-axis{
-  position:relative;
-  height:18px;
-  margin-top:4px;
-  font-size:12px;
-  color: rgba(44,58,92,0.75);
-}
-.pc-date-axis .tick{
-  position:absolute;
-  bottom:0;
-  transform: translateX(-50%);
-  white-space:nowrap;
-}
-.pc-date-axis .tick::before{
-  content:"";
-  position:absolute;
-  left:50%;
-  transform:translateX(-50%);
-  bottom:16px;
-  width:1px;
-  height:6px;
-  background: rgba(44,58,92,0.25);
-}
-/* Target month block */
+/* ===========================
+   FMV: Target month (new UI)
+   =========================== */
+
 .pc-target-wrap{
-  margin-top: 12px;
+  margin-top:12px;
 }
 
 .pc-target-check{
   display:flex;
-  gap:10px;
   align-items:center;
-  font-size: 14px;
+  gap:10px;
+  font-size:14px;
   user-select:none;
-  margin: 6px 0 10px;
+  margin:6px 0 8px;
 }
 
-.pc-move-scrub{
-  border: 1px solid rgba(44,58,92,0.12);
-  border-radius: 12px;
-  padding: 12px;
-  background: #fff;
+.pc-target-check input{
+  width:16px;
+  height:16px;
 }
 
-/* IMPORTANT: make the range look like a neutral track (no "filled" left side) */
-#pc-target-range{
-  width:100%;
-  margin-top: 10px;
-  accent-color: #2f3b63; /* only affects thumb in most browsers */
+#pc-target-ui{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  padding:10px 12px;
+  border:1px solid rgba(44,58,92,0.12);
+  border-radius:12px;
+  background:rgba(255,255,255,0.75);
 }
 
-/* Custom tick track underneath */
-.pc-target-ticks{
-  position: relative;
-  height: 22px;
-  margin-top: 6px;
-}
-.pc-target-ticks .tick{
-  position: absolute;
-  top: 0;
-  transform: translateX(-50%);
-  width: 1px;
-  height: 10px;
-  background: #cfd5e3;
-}
-.pc-target-ticks .tick.label{
-  height: 10px;
-}
-.pc-target-ticks .tick.label::after{
-  content: attr(data-label);
-}
-.pc-target-ticks .tick.label{
-  background: #bfc7da;
-}
-.pc-target-ticks .tick.label{
-  width: 1px;
-}
-.pc-target-ticks .tick.label{
-  /* label text */
-}
-.pc-target-ticks .tick.label{
-  /* keep simple: put text in the element */
-  color:#7a8296;
-  font-size: 12px;
-  white-space: nowrap;
-  padding-top: 10px;
-  background: transparent; /* don’t draw a thick bar */
+#pc-target-month{
+  height:40px;
+  padding:8px 10px;
+  border-radius:10px;
+  border:1px solid #ddd;
+  background:#fff;
+  font-size:14px;
+  outline:none;
+  min-width:220px;
 }
 
-/* date slider: no “thermometer fill” look */
-#pc-target-range{
-  accent-color: #2f3b63; /* knob color */
+#pc-target-month:focus{
+  border-color:#b8c0d3;
+  box-shadow:0 0 0 3px rgba(44,58,92,.10);
 }
-#pc-target-range::-webkit-slider-runnable-track{
-  background: #d9dde7;
+
+#pc-target-hint{
+  font-size:12px;
+  color:var(--muted);
 }
-#pc-target-range::-moz-range-track{
-  background: #d9dde7;
+
+/* ===========================
+   Plotly annotation bubble rounding
+   (Plotly annotations are SVG; this affects the annotation text container)
+   =========================== */
+
+/* This targets Plotly annotation backgrounds (SVG rects). 
+   It’s safe: only applies inside Plotly graphs. */
+.js-plotly-plot .annotation rect{
+  rx:10px;
+  ry:10px;
+}
+
+/* Slightly soften the annotation border */
+.js-plotly-plot .annotation rect{
+  stroke: rgba(44,58,92,0.22) !important;
+}
+
+/* Optional: make annotation text feel less cramped */
+.js-plotly-plot .annotation text{
+  font-weight:600;
 }
