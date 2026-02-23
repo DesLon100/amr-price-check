@@ -544,130 +544,189 @@ export function runPriceCheck({
     return price * (pTarget / pInput);
   }
 
-  // ---------- deterministic UI binding ----------
-  plotPromise.then(() => {
-    const gd = elChart;
+ // ---------- deterministic UI binding ----------
+plotPromise.then(() => {
+  const gd = elChart;
 
-    const DARK_DOT  = "#2f3b63";
-    const LIGHT_DOT = "#9bb7e0";
+  const DARK_DOT  = "#2f3b63";
+  const LIGHT_DOT = "#9bb7e0";
 
-    const data = (gd && gd.data) ? gd.data : [];
-    const idxBase = data.findIndex(t => t && t.meta === "pc_base");
-    const idxP50  = data.findIndex(t => t && t.meta === "pc_p50_24");
-    const idxReg  = data.findIndex(t => t && t.meta === "pc_p50_reg");
+  const data = (gd && gd.data) ? gd.data : [];
+  const idxBase = data.findIndex(t => t && t.meta === "pc_base");
+  const idxP50  = data.findIndex(t => t && t.meta === "pc_p50_24");
+  const idxReg  = data.findIndex(t => t && t.meta === "pc_p50_reg");
 
-    // DOM nodes
-    let btn = document.getElementById("pc-move-toggle");
-    const panel = document.getElementById("pc-move");
-    const moveEl = document.getElementById("pc-move-chart");
-    const capEl  = document.getElementById("pc-move-caption");
+  // DOM nodes
+  let btn = document.getElementById("pc-move-toggle");
+  const panel = document.getElementById("pc-move");
+  const moveEl = document.getElementById("pc-move-chart");
+  const capEl  = document.getElementById("pc-move-caption");
 
-    const rng   = document.getElementById("pc-target-range");
-    const lab   = document.getElementById("pc-target-label");
-    const reset = document.getElementById("pc-target-reset");
+  // Opt-in + scrubber wrapper + axis
+  const optin = document.getElementById("pc-add-target");
+  const wrap  = document.getElementById("pc-target-wrap");
+  const axis  = document.getElementById("pc-target-axis");
 
-    // If any of these are missing, don't crash the rest
-    if(!btn || !panel) return;
+  const rng   = document.getElementById("pc-target-range");
+  const lab   = document.getElementById("pc-target-label");
+  const reset = document.getElementById("pc-target-reset");
 
-    // 🔒 Kill any previous listeners from earlier runs by cloning the button
-    const btnClone = btn.cloneNode(true);
-    btn.parentNode.replaceChild(btnClone, btn);
-    btn = btnClone;
+  // If any of these are missing, don't crash the rest
+  if(!btn || !panel) return;
 
-    const monthLabel = (d) =>
-      d.toLocaleString("en-GB", { month:"short", year:"numeric", timeZone:"UTC" });
+  // 🔒 Kill any previous listeners from earlier runs by cloning the button
+  const btnClone = btn.cloneNode(true);
+  btn.parentNode.replaceChild(btnClone, btn);
+  btn = btnClone;
 
-    const applyBaseline = () => {
-      if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": DARK_DOT }, [idxBase]);
-      if(idxP50  >= 0) Plotly.restyle(gd, { visible:false }, [idxP50]);
-      if(idxReg  >= 0) Plotly.restyle(gd, { visible:false }, [idxReg]);
+  const monthLabel = (d) =>
+    d.toLocaleString("en-GB", { month:"short", year:"numeric", timeZone:"UTC" });
 
-      panel.classList.add("hidden");
-      btn.setAttribute("aria-expanded", "false");
-      const chev = btn.querySelector(".chev");
-      if(chev) chev.textContent = "▾";
+  // Build a simple month axis (yearly ticks + endpoints)
+  const buildAxis = () => {
+    if(!axis || !months || !months.length) return;
+    axis.innerHTML = "";
 
-      if(moveEl) moveEl.innerHTML = "";
-      if(capEl) capEl.textContent = "";
-    };
+    const idxs = new Set([0, months.length - 1]);
+    for(let i = 0; i < months.length; i += 12) idxs.add(i);
 
-    const applyMovementOn = () => {
-      if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": LIGHT_DOT }, [idxBase]);
-      if(idxP50  >= 0) Plotly.restyle(gd, { visible:true }, [idxP50]);
-      if(idxReg  >= 0) Plotly.restyle(gd, { visible:true }, [idxReg]);
+    const sorted = Array.from(idxs).sort((a,b)=>a-b);
+    for(const i of sorted){
+      const pct = (months.length === 1) ? 0 : (i / (months.length - 1)) * 100;
+      const d = months[i];
 
-      panel.classList.remove("hidden");
-      btn.setAttribute("aria-expanded", "true");
-      const chev = btn.querySelector(".chev");
-      if(chev) chev.textContent = "▴";
-    };
+      const tick = document.createElement("div");
+      tick.className = "tick";
+      tick.style.left = `${pct}%`;
+      tick.textContent = monthLabel(d);
+      axis.appendChild(tick);
+    }
+  };
 
-    const renderForTarget = (targetDateUTC) => {
-      if(!moveEl) return;
-      const equiv = impliedValueAt(targetDateUTC);
+  const hideTargetUI = () => {
+    if(optin) optin.checked = false;
+    if(wrap) wrap.classList.add("hidden");
+    if(axis) axis.innerHTML = "";
+  };
 
-      if(lab) lab.textContent = monthLabel(targetDateUTC);
+  const applyBaseline = () => {
+    if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": DARK_DOT }, [idxBase]);
+    if(idxP50  >= 0) Plotly.restyle(gd, { visible:false }, [idxP50]);
+    if(idxReg  >= 0) Plotly.restyle(gd, { visible:false }, [idxReg]);
 
-      if(Number.isFinite(equiv)){
-        renderMovement(moveEl, {
-          price,
-          equivNow: equiv,
-          captionText:
-            "This uses the artist’s 24-month rolling median (p50) trend. Move the target month to translate the same input value across time."
-        });
-      } else {
-        moveEl.innerHTML = "";
-        if(capEl){
-          capEl.textContent =
-            "Not enough auction activity around one of the selected dates to compute a fair-market translation.";
-        }
+    panel.classList.add("hidden");
+    btn.setAttribute("aria-expanded", "false");
+    const chev = btn.querySelector(".chev");
+    if(chev) chev.textContent = "▾";
+
+    if(moveEl) moveEl.innerHTML = "";
+    if(capEl) capEl.textContent = "";
+
+    // NEW: reset/hide target-month UI
+    hideTargetUI();
+  };
+
+  const applyMovementOn = () => {
+    if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": LIGHT_DOT }, [idxBase]);
+    if(idxP50  >= 0) Plotly.restyle(gd, { visible:true }, [idxP50]);
+    if(idxReg  >= 0) Plotly.restyle(gd, { visible:true }, [idxReg]);
+
+    panel.classList.remove("hidden");
+    btn.setAttribute("aria-expanded", "true");
+    const chev = btn.querySelector(".chev");
+    if(chev) chev.textContent = "▴";
+  };
+
+  const renderForTarget = (targetDateUTC) => {
+    if(!moveEl) return;
+    const equiv = impliedValueAt(targetDateUTC);
+
+    if(lab) lab.textContent = monthLabel(targetDateUTC);
+
+    if(Number.isFinite(equiv)){
+      renderMovement(moveEl, {
+        price,
+        equivNow: equiv,
+        captionText:
+          "This uses the artist’s 24-month rolling median (p50) trend. Move the target month to translate the same input value across time."
+      });
+    } else {
+      moveEl.innerHTML = "";
+      if(capEl){
+        capEl.textContent =
+          "Not enough auction activity around one of the selected dates to compute a fair-market translation.";
       }
+    }
+  };
+
+  const initScrubber = () => {
+    if(!rng || !months || !months.length) return;
+
+    rng.min = 0;
+    rng.max = months.length - 1;
+
+    // default target = latest month in dataset
+    rng.value = String(months.length - 1);
+    if(lab) lab.textContent = monthLabel(months[months.length - 1]);
+
+    rng.oninput = () => {
+      const idx = Math.max(0, Math.min(months.length - 1, Number(rng.value)));
+      renderForTarget(months[idx]);
     };
 
-    const initScrubber = () => {
-      if(!rng || !months || !months.length) return;
-
-      rng.min = 0;
-      rng.max = months.length - 1;
-
-      // default target = latest month in dataset
-      rng.value = String(months.length - 1);
-      if(lab) lab.textContent = monthLabel(months[months.length - 1]);
-
-      rng.oninput = () => {
-        const idx = Math.max(0, Math.min(months.length - 1, Number(rng.value)));
-        renderForTarget(months[idx]);
+    if(reset){
+      reset.onclick = () => {
+        rng.value = String(months.length - 1);
+        renderForTarget(months[months.length - 1]);
       };
+    }
 
-      if(reset){
-        reset.onclick = () => {
-          rng.value = String(months.length - 1);
-          renderForTarget(months[months.length - 1]);
-        };
-      }
-    };
+    // NEW: axis labels under the slider
+    buildAxis();
+  };
 
-    // Always start baseline
-    applyBaseline();
+  // Always start baseline
+  applyBaseline();
 
-    // Bind toggle
-    btn.addEventListener("click", () => {
-      const isOpen = btn.getAttribute("aria-expanded") === "true";
-      if(isOpen){
-        applyBaseline();
-      } else {
-        applyMovementOn();
+  // Bind opt-in checkbox (if present)
+  if(optin){
+    optin.onchange = () => {
+      const on = !!optin.checked;
+
+      // Show/hide the date slider block
+      if(wrap) wrap.classList.toggle("hidden", !on);
+
+      if(on){
         initScrubber();
 
+        // Once visible, drive the target immediately
         if(rng && months && months.length){
           const idx = Math.max(0, Math.min(months.length - 1, Number(rng.value)));
           renderForTarget(months[idx]);
-        } else {
-          renderForTarget(monthStartUTC(latestDate));
         }
+      } else {
+        // Revert to "today" (latest)
+        renderForTarget(monthStartUTC(latestDate));
+        if(axis) axis.innerHTML = "";
       }
-    });
-  });
+    };
+  }
 
-  return { pct, equivNow: impliedValueAt(monthStartUTC(latestDate)), plotPromise };
-}
+  // Bind FMV toggle
+  btn.addEventListener("click", () => {
+    const isOpen = btn.getAttribute("aria-expanded") === "true";
+    if(isOpen){
+      applyBaseline();
+    } else {
+      applyMovementOn();
+
+      // Always show "today" valuation first (value slider only)
+      renderForTarget(monthStartUTC(latestDate));
+
+      // NEW: keep target-month UI hidden unless user opts in
+      hideTargetUI();
+    }
+  });
+});
+
+return { pct, equivNow: impliedValueAt(monthStartUTC(latestDate)), plotPromise };
