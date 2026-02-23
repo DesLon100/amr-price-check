@@ -205,14 +205,6 @@ const LOCATION_LOOKUP = {
   "SOTHSAAR": "Sothebys · SAUDI ARABIA"
 };
 
-// js/pricecheck.js
-
-// ------------------------------------------------------------
-// LocationCode -> "Auction house · CITY" mapping (197 entries)
-// ------------------------------------------------------------
-// KEEP YOUR LOCATION_LOOKUP EXACTLY AS-IS ABOVE THIS LINE
-// const LOCATION_LOOKUP = { ... };
-
 // Convert "House · CITY" -> "House (City)" for tooltips
 function locationLabel(code){
   const c = String(code || "").trim();
@@ -326,7 +318,7 @@ function ols(xs, ys){
   return { a, b };
 }
 
-// Movement slider (CTA)
+// Movement slider (value translation)
 function renderMovement(el, { price, equivNow, captionText = "" }){
   if(!el) return;
 
@@ -361,7 +353,7 @@ function renderMovement(el, { price, equivNow, captionText = "" }){
   if(capEl) capEl.textContent = captionText;
 }
 
-// CSV fields
+// CSV fields (from data.js)
 function getLocationCode(r){ return String(r.LocationCode ?? "").trim(); }
 function getLotNo(r){ return String(r.LotNo ?? "").trim() || "—"; }
 function getSaleURL(r){ return String(r.SaleURL ?? "").trim(); }
@@ -402,6 +394,7 @@ export function runPriceCheck({
     "Lot %{customdata[1]}" +
     "<extra>Click dot to open sale</extra>";
 
+  // Scatter: normal colour on initial load
   const baseTrace = {
     x, y, customdata,
     type:"scattergl",
@@ -412,7 +405,9 @@ export function runPriceCheck({
     meta:"pc_base"
   };
 
-  // ---------- rolling p50 + regression ----------
+  // ------------------------------------------------------------
+  // Precompute 24M rolling p50 + regression (hidden until FMV opens)
+  // ------------------------------------------------------------
   const months = buildMonthRangeUTC(all[0].date, all[all.length-1].date);
   const allM = all.map(r => ({ ...r, _m: monthStartUTC(r.date) }));
 
@@ -467,13 +462,13 @@ export function runPriceCheck({
 
   const purchaseMonth = monthStartUTC(artworkDate);
 
-  // SVG lines so they always draw ABOVE WebGL dots
+  // Lines MUST draw above WebGL dots -> use SVG scatter for lines
   const p50Trace = (p50Dates.length >= 2) ? {
     x: p50Dates,
     y: p50Vals,
     type:"scatter",
     mode:"lines",
-    line:{width:4, color:"rgba(47,59,99,0.45)"},
+    line:{width:3.5, color:"rgba(47,59,99,0.45)"},
     hovertemplate:"24M rolling median (p50)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
     showlegend:false,
     visible:false,
@@ -485,7 +480,7 @@ export function runPriceCheck({
     y: regVals,
     type:"scatter",
     mode:"lines",
-    line:{width:5, color:"rgba(47,59,99,0.90)"},
+    line:{width:5.5, color:"rgba(47,59,99,0.90)"}, // thicker regression
     hovertemplate:"Trend line (regression through rolling p50)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
     showlegend:false,
     visible:false,
@@ -517,12 +512,12 @@ export function runPriceCheck({
     plot_bgcolor:"rgba(0,0,0,0)"
   }, {responsive:true, displayModeBar:false});
 
-  // Percentile at purchase month (unchanged)
+  // Percentile at purchase month (kept for any upstream use)
   const thenUniverse = all.filter(r => r.date <= artworkDate);
   const thenPricesAll = thenUniverse.map(r=>r.price).sort((a,b)=>a-b);
   const pct = percentileRank(thenPricesAll, price);
 
-  // regression revaluation for "today"
+  // Translate value using regression ratio between two months
   function impliedValueAt(targetMonthUTC){
     if(!reg || !Number.isFinite(price) || price <= 0) return null;
 
@@ -544,198 +539,210 @@ export function runPriceCheck({
     return price * (pTarget / pInput);
   }
 
-// ---------- deterministic UI binding ----------
-plotPromise.then(() => {
-  const gd = elChart;
+  // ------------------------------------------------------------
+  // Deterministic FMV UI binding (matches YOUR HTML ids)
+  // ------------------------------------------------------------
+  plotPromise.then(() => {
+    const gd = elChart;
 
-  const DARK_DOT  = "#2f3b63";
-  const LIGHT_DOT = "#9bb7e0";
+    const DARK_DOT  = "#2f3b63";
+    const LIGHT_DOT = "#9bb7e0";
 
-  const data = (gd && gd.data) ? gd.data : [];
-  const idxBase = data.findIndex(t => t && t.meta === "pc_base");
-  const idxP50  = data.findIndex(t => t && t.meta === "pc_p50_24");
-  const idxReg  = data.findIndex(t => t && t.meta === "pc_p50_reg");
+    const dataNow = (gd && gd.data) ? gd.data : [];
+    const idxBase = dataNow.findIndex(t => t && t.meta === "pc_base");
+    const idxP50  = dataNow.findIndex(t => t && t.meta === "pc_p50_24");
+    const idxReg  = dataNow.findIndex(t => t && t.meta === "pc_p50_reg");
 
-  // DOM nodes
-  let btn      = document.getElementById("pc-move-toggle");
-  const panel  = document.getElementById("pc-move");
-  const moveEl = document.getElementById("pc-move-chart");
-  const capEl  = document.getElementById("pc-move-caption");
+    // Core FMV panel
+    let btn   = document.getElementById("pc-move-toggle");
+    const panel  = document.getElementById("pc-move");
+    const moveEl = document.getElementById("pc-move-chart");
+    const capEl  = document.getElementById("pc-move-caption");
 
-  // Target-month UI (MATCHES YOUR HTML)
-  const optin = document.getElementById("pc-target-enable"); // checkbox
-  const wrap  = document.getElementById("pc-target-ui");     // hidden container
-  const ticks = document.getElementById("pc-target-ticks");  // tick row
+    if(!btn || !panel) return;
 
-  const rng   = document.getElementById("pc-target-range");
-  const lab   = document.getElementById("pc-target-label");
-  const reset = document.getElementById("pc-target-reset");
+    // Target month UI (your HTML)
+    const optin = document.getElementById("pc-add-target");                 // checkbox
+    const wrap  = document.querySelector("#pc-target-wrap .pc-move-scrub"); // hidden block
+    const axis  = document.getElementById("pc-target-axis");                // tick row
+    const rng   = document.getElementById("pc-target-range");
+    const lab   = document.getElementById("pc-target-label");
+    const reset = document.getElementById("pc-target-reset");
 
-  if(!btn || !panel) return;
+    // kill previous handlers if runPriceCheck called again
+    const btnClone = btn.cloneNode(true);
+    btn.parentNode.replaceChild(btnClone, btn);
+    btn = btnClone;
 
-  // Kill previous listeners from earlier runs by cloning the button
-  const btnClone = btn.cloneNode(true);
-  btn.parentNode.replaceChild(btnClone, btn);
-  btn = btnClone;
+    const monthLabel = (d) =>
+      d.toLocaleString("en-GB", { month:"short", year:"numeric", timeZone:"UTC" });
 
-  const monthLabel = (d) =>
-    d.toLocaleString("en-GB", { month:"short", year:"numeric", timeZone:"UTC" });
-
-  const isQuarterStart = (d) => {
-    const m = d.getUTCMonth(); // 0=Jan
-    return (m === 0 || m === 3 || m === 6 || m === 9);
-  };
-  const isYearStart = (d) => d.getUTCMonth() === 0;
-
-  // Build ticks: quarter markers + year labels every 2 years (prevents overlap)
-  const buildTicks = () => {
-    if(!ticks || !months || !months.length) return;
-    ticks.innerHTML = "";
-
-    const n = months.length;
-    const pct = (i) => (n === 1 ? 0 : (i / (n - 1)) * 100);
-
-    for(let i=0;i<n;i++){
-      const d = months[i];
-
-      // quarter marker (no text)
-      if(isQuarterStart(d)){
-        const t = document.createElement("div");
-        t.className = "tick quarter";
-        t.style.left = `${pct(i)}%`;
-        ticks.appendChild(t);
-      }
-
-      // year line + label every 2 years
-      if(isYearStart(d)){
-        const line = document.createElement("div");
-        line.className = "tick yearline";
-        line.style.left = `${pct(i)}%`;
-        ticks.appendChild(line);
-
-        const y = d.getUTCFullYear();
-        if(y % 2 === 0){
-          const lbl = document.createElement("div");
-          lbl.className = "tick yearlabel";
-          lbl.style.left = `${pct(i)}%`;
-          lbl.textContent = String(y);
-          ticks.appendChild(lbl);
-        }
-      }
-    }
-  };
-
-  const hideTargetUI = () => {
-    if(optin) optin.checked = false;
-    if(wrap)  wrap.classList.add("hidden");
-    if(ticks) ticks.innerHTML = "";
-  };
-
-  const applyBaseline = () => {
-    if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": DARK_DOT }, [idxBase]);
-    if(idxP50  >= 0) Plotly.restyle(gd, { visible:false }, [idxP50]);
-    if(idxReg  >= 0) Plotly.restyle(gd, { visible:false }, [idxReg]);
-
-    panel.classList.add("hidden");
-    btn.setAttribute("aria-expanded", "false");
-    const chev = btn.querySelector(".chev");
-    if(chev) chev.textContent = "▾";
-
-    if(moveEl) moveEl.innerHTML = "";
-    if(capEl) capEl.textContent = "";
-
-    hideTargetUI();
-  };
-
-  const applyMovementOn = () => {
-    if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": LIGHT_DOT }, [idxBase]);
-    if(idxP50  >= 0) Plotly.restyle(gd, { visible:true }, [idxP50]);
-    if(idxReg  >= 0) Plotly.restyle(gd, { visible:true }, [idxReg]);
-
-    panel.classList.remove("hidden");
-    btn.setAttribute("aria-expanded", "true");
-    const chev = btn.querySelector(".chev");
-    if(chev) chev.textContent = "▴";
-  };
-
-  const renderForTarget = (targetDateUTC) => {
-    if(!moveEl) return;
-
-    const equiv = impliedValueAt(targetDateUTC);
-    if(lab) lab.textContent = monthLabel(targetDateUTC);
-
-    if(Number.isFinite(equiv)){
-      renderMovement(moveEl, {
-        price,
-        equivNow: equiv,
-        captionText:
-          "This uses the artist’s 24-month rolling median (p50) trend. Move the target month to translate the same input value across time."
-      });
-    } else {
-      moveEl.innerHTML = "";
-      if(capEl){
-        capEl.textContent =
-          "Not enough auction activity around one of the selected dates to compute a fair-market translation.";
-      }
-    }
-  };
-
-  const initScrubber = () => {
-    if(!rng || !months || !months.length) return;
-
-    rng.min = 0;
-    rng.max = months.length - 1;
-    rng.value = String(months.length - 1);
-
-    rng.oninput = () => {
-      const idx = Math.max(0, Math.min(months.length - 1, Number(rng.value)));
-      renderForTarget(months[idx]);
+    const isQuarterMonth = (d) => {
+      const m = d.getUTCMonth(); // 0=Jan
+      return (m === 0 || m === 3 || m === 6 || m === 9); // Jan/Apr/Jul/Oct
     };
 
-    if(reset){
-      reset.onclick = () => {
-        rng.value = String(months.length - 1);
-        renderForTarget(months[months.length - 1]);
+    const buildAxis = () => {
+      if(!axis || !months || !months.length) return;
+      axis.innerHTML = "";
+
+      const n = months.length;
+      if(n < 2) return;
+
+      for(let i=0;i<n;i++){
+        const d = months[i];
+        const pct = (i / (n - 1)) * 100;
+
+        // quarter tick (no label)
+        if(isQuarterMonth(d)){
+          const t = document.createElement("div");
+          t.className = "tick quarter";
+          t.style.left = `${pct}%`;
+          axis.appendChild(t);
+        }
+
+        // year line + label every 2 years (Jan only)
+        if(d.getUTCMonth() === 0){
+          const y = d.getUTCFullYear();
+
+          const ln = document.createElement("div");
+          ln.className = "tick yearline";
+          ln.style.left = `${pct}%`;
+          axis.appendChild(ln);
+
+          if(y % 2 === 0){
+            const lbl = document.createElement("div");
+            lbl.className = "tick yearlabel";
+            lbl.style.left = `${pct}%`;
+            lbl.textContent = String(y);
+            axis.appendChild(lbl);
+          }
+        }
+      }
+    };
+
+    const hideTargetUI = () => {
+      if(optin) optin.checked = false;
+      if(wrap) wrap.classList.add("hidden");
+      if(axis) axis.innerHTML = "";
+    };
+
+    const renderForTarget = (targetDateUTC) => {
+      if(!moveEl) return;
+
+      const equiv = impliedValueAt(targetDateUTC);
+      if(lab) lab.textContent = monthLabel(targetDateUTC);
+
+      if(Number.isFinite(equiv)){
+        renderMovement(moveEl, {
+          price,
+          equivNow: equiv,
+          captionText:
+            "This uses the artist’s 24-month rolling median (p50) trend. " +
+            "Switch on “Add target month” to translate the same input value to another point in time."
+        });
+      } else {
+        moveEl.innerHTML = "";
+        if(capEl){
+          capEl.textContent =
+            "Not enough auction activity around one of the selected dates to compute a fair-market translation.";
+        }
+      }
+    };
+
+    const initScrubber = () => {
+      if(!rng || !months || !months.length) return;
+
+      rng.min = 0;
+      rng.max = months.length - 1;
+      rng.step = 1;
+
+      // default target = latest month
+      rng.value = String(months.length - 1);
+      if(lab) lab.textContent = monthLabel(months[months.length - 1]);
+
+      rng.oninput = () => {
+        const idx = Math.max(0, Math.min(months.length - 1, Number(rng.value)));
+        renderForTarget(months[idx]);
+      };
+
+      if(reset){
+        reset.onclick = () => {
+          rng.value = String(months.length - 1);
+          renderForTarget(months[months.length - 1]);
+        };
+      }
+
+      buildAxis();
+    };
+
+    const applyBaseline = () => {
+      if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": DARK_DOT }, [idxBase]);
+      if(idxP50  >= 0) Plotly.restyle(gd, { visible:false }, [idxP50]);
+      if(idxReg  >= 0) Plotly.restyle(gd, { visible:false }, [idxReg]);
+
+      panel.classList.add("hidden");
+      btn.setAttribute("aria-expanded", "false");
+      const chev = btn.querySelector(".chev");
+      if(chev) chev.textContent = "▾";
+
+      if(moveEl) moveEl.innerHTML = "";
+      if(capEl) capEl.textContent = "";
+
+      hideTargetUI();
+    };
+
+    const applyMovementOn = () => {
+      if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": LIGHT_DOT }, [idxBase]);
+      if(idxP50  >= 0) Plotly.restyle(gd, { visible:true }, [idxP50]);
+      if(idxReg  >= 0) Plotly.restyle(gd, { visible:true }, [idxReg]);
+
+      panel.classList.remove("hidden");
+      btn.setAttribute("aria-expanded", "true");
+      const chev = btn.querySelector(".chev");
+      if(chev) chev.textContent = "▴";
+    };
+
+    // Start in baseline ALWAYS
+    applyBaseline();
+
+    // Opt-in behaviour (target month checkbox)
+    if(optin){
+      optin.onchange = () => {
+        const on = !!optin.checked;
+
+        if(wrap) wrap.classList.toggle("hidden", !on);
+
+        if(on){
+          initScrubber();
+          if(rng && months && months.length){
+            const idx = Math.max(0, Math.min(months.length - 1, Number(rng.value)));
+            renderForTarget(months[idx]);
+          }
+        } else {
+          // go back to "today"
+          renderForTarget(monthStartUTC(latestDate));
+          if(axis) axis.innerHTML = "";
+        }
       };
     }
 
-    buildTicks();
-  };
-
-  // baseline always after plot completes
-  applyBaseline();
-
-  // opt-in checkbox controls the date slider visibility
-  if(optin){
-    optin.onchange = () => {
-      const on = !!optin.checked;
-
-      if(wrap) wrap.classList.toggle("hidden", !on);
-
-      if(on){
-        initScrubber();
-        const idx = Math.max(0, Math.min(months.length - 1, Number(rng?.value || (months.length - 1))));
-        renderForTarget(months[idx]);
+    // Main FMV toggle
+    btn.addEventListener("click", () => {
+      const isOpen = btn.getAttribute("aria-expanded") === "true";
+      if(isOpen){
+        applyBaseline();
       } else {
-        if(ticks) ticks.innerHTML = "";
+        applyMovementOn();
+
+        // default: show "today" translation first
         renderForTarget(monthStartUTC(latestDate));
+
+        // keep date slider hidden until user opts-in
+        hideTargetUI();
       }
-    };
-  }
-
-  // FMV toggle
-  btn.addEventListener("click", () => {
-    const isOpen = btn.getAttribute("aria-expanded") === "true";
-    if(isOpen){
-      applyBaseline();
-    } else {
-      applyMovementOn();
-      renderForTarget(monthStartUTC(latestDate)); // show today first
-      hideTargetUI(); // target month hidden until user opts in
-    }
+    });
   });
-});
 
-// IMPORTANT: return is inside runPriceCheck, after plotPromise.then
-return { pct, equivNow: impliedValueAt(monthStartUTC(latestDate)), plotPromise };
+  return { pct, equivNow: impliedValueAt(monthStartUTC(latestDate)), plotPromise };
 }
