@@ -96,32 +96,34 @@
         </div>
 
 <div id="pc-move" class="pc-bands hidden">
-  <!-- NEW: opt-in target month -->
-  <label class="pc-target-optin">
-    <input id="pc-add-target" type="checkbox" />
-    <span>Add target month</span>
-  </label>
-
-  <!-- date scrubber (hidden unless opt-in checked) -->
-  <div id="pc-target-wrap" class="pc-move-scrub hidden">
-    <div class="pc-move-scrub-top">
-      <span class="muted">Target month:</span>
-      <strong id="pc-target-label">—</strong>
-      <button id="pc-target-reset" class="btn ghost" type="button" style="margin-left:auto;padding:6px 10px;">
-        Today
-      </button>
-    </div>
-
-    <input id="pc-target-range" class="pc-date-range" type="range" min="0" max="0" step="1" value="0" />
-
-    <!-- axis with labels (we'll populate in JS) -->
-    <div id="pc-target-axis" class="pc-date-axis" aria-hidden="true"></div>
-  </div>
-
   <div id="pc-move-chart" class="pc-bands-chart"></div>
   <div id="pc-move-caption" class="pc-bands-caption"></div>
-</div>
 
+  <!-- NEW: target month toggle + scrubber (below the value slider) -->
+  <div class="pc-target-wrap">
+    <label class="pc-target-check">
+      <input id="pc-target-enable" type="checkbox" />
+      <span>Add target month</span>
+    </label>
+
+    <div id="pc-target-ui" class="pc-move-scrub hidden">
+      <div class="pc-move-scrub-top">
+        <span class="muted">Target month:</span>
+        <strong id="pc-target-label">—</strong>
+
+        <button id="pc-target-reset" class="btn ghost" type="button"
+          style="margin-left:auto;padding:6px 10px;">
+          Today
+        </button>
+      </div>
+
+      <input id="pc-target-range" type="range" min="0" max="0" step="1" value="0" />
+
+      <!-- ticks/labels injected by JS -->
+      <div id="pc-target-ticks" class="pc-target-ticks" aria-hidden="true"></div>
+    </div>
+  </div>
+</div>
         <!-- Back button -->
         <div class="pc-actions">
           <button id="pc-back" class="btn ghost" type="button">Back</button>
