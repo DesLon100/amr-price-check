@@ -99,30 +99,31 @@
   <div id="pc-move-chart" class="pc-bands-chart"></div>
   <div id="pc-move-caption" class="pc-bands-caption"></div>
 
-  <!-- NEW: target month toggle + scrubber (below the value slider) -->
-  <div class="pc-target-wrap">
-    <label class="pc-target-check">
-      <input id="pc-target-enable" type="checkbox" />
-      <span>Add target month</span>
-    </label>
+ <!-- NEW: target month toggle + scrubber (below the value slider) -->
+<div id="pc-target-wrap" class="pc-target-wrap">
 
-    <div id="pc-target-ui" class="pc-move-scrub hidden">
-      <div class="pc-move-scrub-top">
-        <span class="muted">Target month:</span>
-        <strong id="pc-target-label">—</strong>
+  <label class="pc-target-check">
+    <input id="pc-add-target" type="checkbox" />
+    <span>Add target month</span>
+  </label>
 
-        <button id="pc-target-reset" class="btn ghost" type="button"
-          style="margin-left:auto;padding:6px 10px;">
-          Today
-        </button>
-      </div>
+  <div class="pc-move-scrub hidden">
+    <div class="pc-move-scrub-top">
+      <span class="muted">Target month:</span>
+      <strong id="pc-target-label">—</strong>
 
-      <input id="pc-target-range" type="range" min="0" max="0" step="1" value="0" />
-
-      <!-- ticks/labels injected by JS -->
-      <div id="pc-target-ticks" class="pc-target-ticks" aria-hidden="true"></div>
+      <button id="pc-target-reset" class="btn ghost" type="button"
+        style="margin-left:auto;padding:6px 10px;">
+        Today
+      </button>
     </div>
+
+    <input id="pc-target-range" type="range" min="0" max="0" step="1" value="0" />
+
+    <!-- ticks/labels injected by JS -->
+    <div id="pc-target-axis" class="pc-target-ticks" aria-hidden="true"></div>
   </div>
+
 </div>
         <!-- Back button -->
         <div class="pc-actions">
