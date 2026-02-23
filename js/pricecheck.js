@@ -698,7 +698,7 @@ const status = document.getElementById("pc-target-hint");    // hint text
       contextEl.innerHTML =
         "Fair market value is best estimated from the market’s central tendency, not its extremes." +
         "This module calculates a 24-month rolling median (p50) of auction prices and fits a trend line to represent the artist’s underlying market level." +
-        "We then revalue your purchase price by the movement of that trend from your purchase date.";
+        "We then revalue your purchase price by the movement of that trend from your purchase to current or target date.";
     };
 
     const clearTargetUI = () => {
