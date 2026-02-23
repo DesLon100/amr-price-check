@@ -4,205 +4,7 @@
 // LocationCode -> "Auction house · CITY" mapping (197 entries)
 // ------------------------------------------------------------
 const LOCATION_LOOKUP = {
-  "33AUBALI": "33 Auction · BALI",
-  "33AUJAKA": "33 Auction · JAKARTA",
-  "33AUONLI": "33 Auction · ONLINE",
-  "33AUOSGD": "33 Auction · ONLINE SGD",
-  "33AUSING": "33 Auction · SINGAPORE",
-  "ARTCDROU": "Artcurial · DROUOT",
-  "ARTCMARR": "Artcurial · MARRAKESH",
-  "ARTCMCAR": "Artcurial · MONTE CARLO",
-  "ARTCOEUR": "Artcurial · ONLINE EUR",
-  "ARTCPARI": "Artcurial · PARIS",
-  "ARTHLAGO": "ArtHouseNG · LAGOS",
-  "AUCTONLI": "Auctionsverket · ONLINE",
-  "AUCTOSEK": "Auctionsverket · ONLINE SEK",
-  "AUCTSTOC": "Auctionsverket · STOCKHOLM",
-  "AUCTOLDD": "Auctionsverket · ONLINE DKK",
-  "AUCTOEUR": "Auctionsverket · ONLINE EUR",
-  "AUCTOUSD": "Auctionsverket · ONLINE USD",
-  "CHPOBEIJ": "Beijing Poly Intl · BEIJING",
-  "CHPOHONG": "Beijing Poly Intl · HONG KONG",
-  "BONHBRED": "Bonhams · BREDGATE",
-  "BONHEDIN": "Bonhams · EDINBURGH",
-  "BONHHONG": "Bonhams · HONG KONG",
-  "BONHLOND": "Bonhams · LONDON",
-  "BONHLOSA": "Bonhams · LOS ANGELES",
-  "BONHMARL": "Bonhams · MARLBOROUGH",
-  "BONHMELB": "Bonhams · MELBOURNE",
-  "BONHNEWY": "Bonhams · NEW YORK",
-  "BONHONLI": "Bonhams · ONLINE",
-  "BONHOAUD": "Bonhams · ONLINE AUD",
-  "BONHOHCF": "Bonhams · ONLINE CHF",
-  "BONHODKK": "Bonhams · ONLINE DKK",
-  "BONHOEUR": "Bonhams · ONLINE EUR",
-  "BONHOGBP": "Bonhams · ONLINE GBP",
-  "BONHOHKD": "Bonhams · ONLINE HKD",
-  "BONHOUSD": "Bonhams · ONLINE USD",
-  "BONHOXFO": "Bonhams · OXFORD",
-  "BONHPARI": "Bonhams · PARIS",
-  "BONHSANF": "Bonhams · SAN FRANCISCO",
-  "BONHSYDN": "Bonhams · SYDNEY",
-  "BONHBRUS": "Bonhams · BRUSSELS",
-  "BUKOHELS": "Bukowskis · HELSINKY",
-  "BUKOONLI": "Bukowskis · ONLINE",
-  "BUKOOEUR": "Bukowskis · ONLINE EUR",
-  "BUKOOSEK": "Bukowskis · ONLINE SEK",
-  "BUKOSTOC": "Bukowskis · STOCKHOLM",
-  "CHGUBEIJ": "China Guardian · BEIJING",
-  "CHGUHONG": "China Guardian · HONG KONG",
-  "CHRIAMST": "Christie's · AMSTERDAM",
-  "CHRIDOHA": "Christie's · DOHA",
-  "CHRIDUBA": "Christie's · DUBAI",
-  "CHRIGENE": "Christie's · GENEVA",
-  "CHRIHONG": "Christie's · HONG KONG",
-  "CHRILOND": "Christie's · LONDON",
-  "CHRIMILA": "Christie's · MILAN",
-  "CHRINEWY": "Christie's · NEW YORK",
-  "CHRIONLI": "Christie's · ONLINE",
-  "CHRIOHCF": "Christie's · ONLINE CHF",
-  "CHRIOEUR": "Christie's · ONLINE EUR",
-  "CHRIOGBP": "Christie's · ONLINE GBP",
-  "CHRIOHKD": "Christie's · ONLINE HKD",
-  "CHRIOUSD": "Christie's · ONLINE USD",
-  "CHRIPARI": "Christie's · PARIS",
-  "CHRISHAN": "Christie's · SHANGHAI",
-  "CHRIZURI": "Christie's · ZURICH",
-  "AGUTDROU": "Claude Aguttes · DROUOT",
-  "AGUTLYON": "Claude Aguttes · LYON",
-  "AGUTNEUI": "Claude Aguttes · NEUILLY",
-  "AGUTONLI": "Claude Aguttes · ONLINE",
-  "AGUTOEUR": "Claude Aguttes · ONLINE EUR",
-  "AGUTPARI": "Claude Aguttes · PARIS",
-  "COUEONLI": "Couer D'Alene · ONLINE",
-  "COUERENO": "Couer D'Alene · RENO",
-  "DOROGRAZ": "Dorotheum · GRAZ",
-  "DOROKLAG": "Dorotheum · KLAGENFURT",
-  "DOROLINZ": "Dorotheum · LINZ",
-  "DOROONLI": "Dorotheum · ONLINE",
-  "DOROOEUR": "Dorotheum · ONLINE EUR",
-  "DOROPRAG": "Dorotheum · PRAGUE",
-  "DOROSALZ": "Dorotheum · SALZBURG",
-  "DOROWIEN": "Dorotheum · WIEN",
-  "DOYLNEWY": "Doyle · NEW YORK",
-  "FARSCORT": "Farsetti · CORTINA",
-  "FARSMILA": "Farsetti · MILAN",
-  "FARSONLI": "Farsetti · ONLINE",
-  "FARSOEUR": "Farsetti · ONLINE EUR",
-  "FARSPRAT": "Farsetti · PRATO",
-  "HEFFONLI": "Heffel · ONLINE",
-  "HEFFOCAD": "Heffel · ONLINE CAD",
-  "HEFFTORO": "Heffel · TORONTO",
-  "HEFFVANC": "Heffel · VANCOUVER",
-  "HERINEWY": "Heritage · NEW YORK",
-  "KORNBASE": "Kornfeld · BASEL",
-  "KORNBERN": "Kornfeld · BERN",
-  "KORNONLI": "Kornfeld · ONLINE",
-  "KORNOHCF": "Kornfeld · ONLINE CHF",
-  "LARABALI": "Larasati · BALI",
-  "LARAJAKA": "Larasati · JAKARTA",
-  "LARALOND": "Larasati · LONDON",
-  "LARAOGBP": "Larasati · ONLINE GBP",
-  "LARAOSGD": "Larasati · ONLINE SGD",
-  "LARASING": "Larasati · SINGAPORE",
-  "LEMPBERL": "Lempertz · BERLIN",
-  "LEMPBRUS": "Lempertz · BRUSSELS",
-  "LEMPCOLO": "Lempertz · COLOGNE",
-  "LEMPOEUR": "Lempertz · ONLINE EUR",
-  "LJOEMELB": "Leonard Joel · MELBOURNE",
-  "LJOEONLI": "Leonard Joel · ONLINE",
-  "LJOEOAUD": "Leonard Joel · ONLINE AUD",
-  "LJOESYAR": "Leonard Joel · SOUTH YARA",
-  "LJOESYDN": "Leonard Joel · SYDNEY",
-  "LJOEWOOL": "Leonard Joel · WOOLHARA",
-  "MEETONLI": "Meeting Art · ONLINE",
-  "MEETVERC": "Meeting Art · VERCELLI",
-  "MORTMEXC": "Morton Subastas · MEXICO CITY",
-  "MORTOMXN": "Morton Subastas · ONLINE MXN",
-  "PANDFLOR": "Pandolfini · FLORENCE",
-  "PANDMILA": "Pandolfini · MILAN",
-  "PANDONLI": "Pandolfini · ONLINE",
-  "PANDOEUR": "Pandolfini · ONLINE EUR",
-  "PHILGENE": "Phillips · GENEVA",
-  "PHILHONG": "Phillips · HONG KONG",
-  "PHILLOND": "Phillips · LONDON",
-  "PHILMOSC": "Phillips · MOSCOW",
-  "PHILNEWY": "Phillips · NEW YORK",
-  "PHILONLI": "Phillips · ONLINE",
-  "PHILOHCF": "Phillips · ONLINE CHF",
-  "PHILOEUR": "Phillips · ONLINE EUR",
-  "PHILOGBP": "Phillips · ONLINE GBP",
-  "PHILOHKD": "Phillips · ONLINE HKD",
-  "PHILOIDR": "Phillips · ONLINE IDR",
-  "PHILOUSD": "Phillips · ONLINE USD",
-  "PHILPARI": "Phillips · PARIS",
-  "PHILTAIP": "Phillips · TAIPEI",
-  "PHILTOKY": "Phillips · TOKYO",
-  "RASMBRED": "Rasmussen · BREDGATE",
-  "RASMONLI": "Rasmussen · ONLINE",
-  "RASMODKK": "Rasmussen · ONLINE DKK",
-  "RAVEONLI": "Ravenel · ONLINE",
-  "RAVEONTD": "Ravenel · ONLINE NTD",
-  "RAVETAIP": "Ravenel · TAIPEI",
-  "SAFFKOCH": "Saffron Art · KOCHI",
-  "SAFFMUMB": "Saffron Art · MUMBAI",
-  "SAFFNDEL": "Saffron Art · NEW DELHI",
-  "SAFFONLI": "Saffron Art · ONLINE",
-  "SAFFOINR": "Saffron Art · ONLINE INR",
-  "SALCMANI": "Salcedo · MANILA",
-  "SALCONLI": "Salcedo · ONLINE",
-  "SALCOPHP": "Salcedo · ONLINE PHP",
-  "SEOUBUSA": "Seoul · BUSAN",
-  "SEQUDAEG": "Seoul · DAEGU",
-  "SEOUHONG": "Seoul · HONG KONG",
-  "SEOUONLI": "Seoul · ONLINE",
-  "SEOUOKRW": "Seoul · ONLINE KRW",
-  "SEOUSEUL": "Seoul · SEOUL",
-  "SMSIMELB": "Smith & Singer · MELBOURNE",
-  "SMSIONLI": "Smith & Singer · ONLINE",
-  "SMSISYDN": "Smith & Singer · SYDNEY",
-  "SOTHCOLO": "Sotheby's · COLOGNE",
-  "SOTHDOHA": "Sotheby's · DOHA",
-  "SOTHDUBA": "Sotheby's · DUBAI",
-  "SOTHGENE": "Sotheby's · GENEVA",
-  "SOTHHONG": "Sotheby's · HONG KONG",
-  "SOTHLASV": "Sotheby's · LAS VEGAS",
-  "SOTHLOND": "Sotheby's · LONDON",
-  "SOTHMIAM": "Sotheby's · MIAMI",
-  "SOTHMILA": "Sotheby's · MILAN",
-  "SOTHMCAR": "Sotheby's · MONTE CARLO",
-  "SOTHMUMB": "Sotheby's · MUMBAI",
-  "SOTHNEWY": "Sotheby's · NEW YORK",
-  "SOTHONLI": "Sotheby's · ONLINE",
-  "SOTHOCHF": "Sotheby's · ONLINE CHF",
-  "SOTHOEUR": "Sotheby's · ONLINE EUR",
-  "SOTHOGBP": "Sotheby's · ONLINE GBP",
-  "SOTHOHKD": "Sotheby's · ONLINE HKD",
-  "SOTHOIDR": "Sotheby's · ONLINE IDR",
-  "SOTHOUSD": "Sotheby's · ONLINE USD",
-  "SOTHPARI": "Sotheby's · PARIS",
-  "SOTHSING": "Sotheby's · SINGAPORE",
-  "SOTHZURI": "Sotheby's · ZURICH",
-  "SWELCAPE": "Stephan Welz · CAPE TOWN",
-  "SWELJOHA": "Stephan Welz · JOHANNESBURG",
-  "SWELONLI": "Stephan Welz · ONLINE",
-  "SWELOZAR": "Stephan Welz · ONLINE ZAR",
-  "STRACAPE": "Strauss · CAPE TOWN",
-  "STRAJOHA": "Strauss · JOHANNESBURG",
-  "STRAONLI": "Strauss · ONLINE",
-  "STRAOZAR": "Strauss · ONLINE ZAR",
-  "SWANNEWY": "Swann · NEW YORK",
-  "TAJAONLI": "Tajan · ONLINE",
-  "TAJAOEUR": "Tajan · ONLINE EUR",
-  "TAJAPARI": "Tajan · PARIS",
-  "TEHATEHR": "Tehran Auction · TEHRAN",
-  "VGRIBERL": "Villa Grisebach · BERLIN",
-  "VGRIONLI": "Villa Grisebach · ONLINE",
-  "VGRIOEUR": "Villa Grisebach · ONLINE EUR",
-  "ARTCBASE": "Artcurial · BASEL",
-  "ARTCOCHF": "Artcurial · ONLINE EUR",
-  "AUCTHELS": "Auktionsverket · HELSINKY",
-  "SOTHSAAR": "Sothebys · SAUDI ARABIA"
+  /* KEEP YOUR FULL LOCATION_LOOKUP EXACTLY AS-IS HERE */
 };
 
 // Convert "House · CITY" -> "House (City)" for tooltips
@@ -319,60 +121,6 @@ function ols(xs, ys){
   return { a, b };
 }
 
-// ------------------------------------------------------------
-// Robust toggle finder:
-// Works if your UI is <details><summary>...</summary></details>
-// OR if it's a clickable element (button/a/div) with that text.
-// ------------------------------------------------------------
-function findMovementToggle(){
-  const want = "see your price movement";
-
-  // 1) <details><summary>
-  const summaries = Array.from(document.querySelectorAll("summary"));
-  for(const s of summaries){
-    const txt = (s.textContent || "").trim().toLowerCase();
-    if(txt.includes(want) && s.parentElement && s.parentElement.tagName === "DETAILS"){
-      return { kind:"details", el:s.parentElement };
-    }
-  }
-
-  // 2) clickable elements with that text
-  const candidates = Array.from(document.querySelectorAll("button, a, [role='button'], div, span"));
-  for(const el of candidates){
-    const txt = (el.textContent || "").trim().toLowerCase();
-    if(!txt) continue;
-    if(!txt.includes(want)) continue;
-
-    // Prefer something that looks like a disclosure
-    const hasAria = el.hasAttribute("aria-expanded");
-    const isClickable = (el.tagName === "BUTTON" || el.tagName === "A" || el.getAttribute("role") === "button");
-    if(hasAria || isClickable){
-      return { kind:"click", el };
-    }
-  }
-
-  return null;
-}
-
-function getToggleState(t){
-  if(!t) return false;
-  if(t.kind === "details"){
-    return !!t.el.open;
-  }
-  // click-toggle: prefer aria-expanded if present
-  const a = t.el.getAttribute("aria-expanded");
-  if(a === "true") return true;
-  if(a === "false") return false;
-
-  // fallback: store state on element
-  return t.el.dataset.pcOpen === "1";
-}
-
-function setToggleStateFallback(t, open){
-  if(!t || t.kind !== "click") return;
-  t.el.dataset.pcOpen = open ? "1" : "0";
-}
-
 // Movement slider (CTA)
 function renderMovement(el, { price, equivNow, captionText = "" }){
   if(!el) return;
@@ -395,7 +143,7 @@ function renderMovement(el, { price, equivNow, captionText = "" }){
       text:[`My Artwork: ${fmtGBP(price)}`], hoverinfo:"text", showlegend:false },
     { x:[equivNow], y:[0], mode:"markers",
       marker:{size:11,color:"#2c3a5c"},
-      text:[`Indicative value today: ${fmtGBP(equivNow)}`], hoverinfo:"text", showlegend:false }
+      text:[`Indicative value: ${fmtGBP(equivNow)}`], hoverinfo:"text", showlegend:false }
   ],{
     margin:{l:16,r:16,t:10,b:34},
     xaxis:{range, showgrid:false, zeroline:false, showline:false, ticks:"outside", ticklen:4, separatethousands:true},
@@ -515,7 +263,7 @@ export function runPriceCheck({
     }
   }
 
-  // Optional “my percentile” rolling line (computed; only shown if your UI has a checkbox for it)
+  // Optional “my percentile” rolling line (computed; only shown if you have a checkbox for it)
   const purchaseMonth = monthStartUTC(artworkDate);
   const thenWin = windowN(all, purchaseMonth, TRANSPORT_WINDOW_MONTHS);
   const thenPricesWin = thenWin.map(r=>r.price).filter(Number.isFinite).sort((a,b)=>a-b);
@@ -549,14 +297,13 @@ export function runPriceCheck({
     }
   }
 
-  // IMPORTANT CHANGE:
-  // Use SVG "scatter" for lines so they always draw above the WebGL dots.
+  // Lines as SVG scatter so they draw above WebGL dots
   const p50Trace = (p50Dates.length >= 2) ? {
     x: p50Dates,
     y: p50Vals,
     type:"scatter",
     mode:"lines",
-    line:{width:3.5, color:"rgba(47,59,99,0.45)"},
+    line:{width:4.0, color:"rgba(47,59,99,0.45)"},
     hovertemplate:"24M rolling median (p50)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
     showlegend:false,
     visible:false,
@@ -568,7 +315,7 @@ export function runPriceCheck({
     y: regVals,
     type:"scatter",
     mode:"lines",
-    line:{width:4.5, color:"rgba(47,59,99,0.90)"},
+    line:{width:5.0, color:"rgba(47,59,99,0.90)"},
     hovertemplate:"Trend line (regression through rolling p50)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
     showlegend:false,
     visible:false,
@@ -598,7 +345,7 @@ export function runPriceCheck({
     meta:"pc_myartwork"
   } : null;
 
-  // Order: dots first, then lines (SVG), then artwork last
+  // Order: dots first, then SVG lines, then artwork marker last
   const traces = [];
   traces.push(baseTrace);
   if(p50Trace) traces.push(p50Trace);
@@ -623,50 +370,54 @@ export function runPriceCheck({
   const pct = percentileRank(thenPricesAll, price);
 
   // ------------------------------------------------------------
-  // Revaluation (regression through rolling p50)
+  // Revaluation helper (input month -> target month)
   // ------------------------------------------------------------
+  function impliedValueAt(targetMonthUTC){
+    if(!reg || !Number.isFinite(price) || price <= 0) return null;
+
+    const tInput  = monthToT.get(monthKeyUTC(purchaseMonth));
+    const tTarget = monthToT.get(monthKeyUTC(monthStartUTC(targetMonthUTC)));
+
+    if(!Number.isFinite(tInput) || !Number.isFinite(tTarget)) return null;
+
+    const winInput  = windowN(all, purchaseMonth, TRANSPORT_WINDOW_MONTHS);
+    const winTarget = windowN(all, monthStartUTC(targetMonthUTC), TRANSPORT_WINDOW_MONTHS);
+
+    if(winInput.length < MIN_SALES_IN_WINDOW || winTarget.length < MIN_SALES_IN_WINDOW) return null;
+
+    const pInput  = Math.exp(reg.a + reg.b * tInput);
+    const pTarget = Math.exp(reg.a + reg.b * tTarget);
+
+    if(!Number.isFinite(pInput) || !Number.isFinite(pTarget) || pInput <= 0 || pTarget <= 0) return null;
+
+    return price * (pTarget / pInput);
+  }
+
   let equivNow = null;
-
   try{
-    if(reg && Number.isFinite(price) && price > 0){
-      const t0 = monthToT.get(monthKeyUTC(purchaseMonth));
-      const t1 = monthToT.get(monthKeyUTC(monthStartUTC(latestDate)));
-
-      if(Number.isFinite(t0) && Number.isFinite(t1)){
-        const win0 = windowN(all, purchaseMonth, TRANSPORT_WINDOW_MONTHS);
-        const win1 = windowN(all, monthStartUTC(latestDate), TRANSPORT_WINDOW_MONTHS);
-
-        if(win0.length >= MIN_SALES_IN_WINDOW && win1.length >= MIN_SALES_IN_WINDOW){
-          const p0 = Math.exp(reg.a + reg.b * t0);
-          const p1 = Math.exp(reg.a + reg.b * t1);
-
-          if(Number.isFinite(p0) && Number.isFinite(p1) && p0 > 0 && p1 > 0){
-            equivNow = price * (p1 / p0);
-          }
-        }
-      }
-    }
+    equivNow = impliedValueAt(monthStartUTC(latestDate));
   } catch(e){
     equivNow = null;
   }
 
-   // ------------------------------------------------------------
-  // UI behaviour (DETERMINISTIC, tied to #pc-move-toggle button)
+  // ------------------------------------------------------------
+  // UI behaviour: deterministic, tied to your actual button
+  // (#pc-move-toggle opens/closes #pc-move)
   // ------------------------------------------------------------
   plotPromise.then(() => {
-    const btn = document.getElementById("pc-move-toggle");
+    const btn   = document.getElementById("pc-move-toggle");
     const panel = document.getElementById("pc-move");
 
     const moveEl = document.getElementById("pc-move-chart");
     const capEl  = document.getElementById("pc-move-caption");
 
-    // NEW scrubber elements (optional; exist if you applied HTML patch)
+    // Optional scrubber elements (only if you added them in HTML)
     const rng   = document.getElementById("pc-target-range");
     const lab   = document.getElementById("pc-target-label");
     const reset = document.getElementById("pc-target-reset");
 
     const DARK_DOT  = "#2f3b63";
-    const LIGHT_DOT = "#9bb7e0"; // light blue, full opacity
+    const LIGHT_DOT = "#9bb7e0";
 
     const gd = elChart;
     const data = (gd && gd.data) ? gd.data : [];
@@ -676,43 +427,11 @@ export function runPriceCheck({
     const idxReg  = data.findIndex(t => t && t.meta === "pc_p50_reg");
     const idxMy   = data.findIndex(t => t && t.meta === "pc_mypercentile_24");
 
-    const cbPct = document.getElementById("pc-show-mypercentile"); // if you have it elsewhere
+    const cbPct = document.getElementById("pc-show-mypercentile"); // only if you have it somewhere
 
-    // ---- helper: format YYYY-MM
-    const fmtMonth = (d) => {
-      const y = d.getUTCFullYear();
-      const m = String(d.getUTCMonth() + 1).padStart(2,"0");
-      return `${y}-${m}`;
-    };
+    const monthLabel = (d) =>
+      d.toLocaleString("en-GB", { month:"short", year:"numeric", timeZone:"UTC" });
 
-    const monthLabel = (d) => {
-      // Short label like "Mar 2022"
-      return d.toLocaleString("en-GB", { month:"short", year:"numeric", timeZone:"UTC" });
-    };
-
-    // ---- implied value using regression ratio (input month -> target month)
-    function impliedValueAt(targetMonthUTC){
-      if(!reg || !Number.isFinite(price) || price <= 0) return null;
-
-      const tInput  = monthToT.get(monthKeyUTC(purchaseMonth));
-      const tTarget = monthToT.get(monthKeyUTC(monthStartUTC(targetMonthUTC)));
-
-      if(!Number.isFinite(tInput) || !Number.isFinite(tTarget)) return null;
-
-      const winInput  = windowN(all, purchaseMonth, TRANSPORT_WINDOW_MONTHS);
-      const winTarget = windowN(all, monthStartUTC(targetMonthUTC), TRANSPORT_WINDOW_MONTHS);
-
-      if(winInput.length < MIN_SALES_IN_WINDOW || winTarget.length < MIN_SALES_IN_WINDOW) return null;
-
-      const pInput  = Math.exp(reg.a + reg.b * tInput);
-      const pTarget = Math.exp(reg.a + reg.b * tTarget);
-
-      if(!Number.isFinite(pInput) || !Number.isFinite(pTarget) || pInput <= 0 || pTarget <= 0) return null;
-
-      return price * (pTarget / pInput);
-    }
-
-    // ---- baseline state: scatter only
     const applyBaseline = () => {
       if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": DARK_DOT }, [idxBase]);
       if(idxP50  >= 0) Plotly.restyle(gd, { visible:false }, [idxP50]);
@@ -722,15 +441,14 @@ export function runPriceCheck({
 
       if(moveEl) moveEl.innerHTML = "";
       if(capEl) capEl.textContent = "";
+      if(lab) lab.textContent = "—";
     };
 
-    // ---- movement ON: light dots + p50/reg visible
     const applyMovementOn = () => {
       if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": LIGHT_DOT }, [idxBase]);
       if(idxP50  >= 0) Plotly.restyle(gd, { visible:true }, [idxP50]);
       if(idxReg  >= 0) Plotly.restyle(gd, { visible:true }, [idxReg]);
 
-      // If you have a "my percentile" checkbox, only allow it when ON
       if(cbPct && idxMy >= 0){
         cbPct.onchange = () => {
           Plotly.restyle(gd, { visible: cbPct.checked ? true : false }, [idxMy]);
@@ -739,12 +457,10 @@ export function runPriceCheck({
       }
     };
 
-    // ---- render slider for a chosen target month
     const renderForTarget = (targetDateUTC) => {
       if(!moveEl) return;
 
       const equiv = impliedValueAt(targetDateUTC);
-
       if(lab) lab.textContent = monthLabel(targetDateUTC);
 
       if(Number.isFinite(equiv)){
@@ -764,18 +480,15 @@ export function runPriceCheck({
       }
     };
 
-    // ---- initialise scrubber range to the months you actually have in regression space
     const initScrubber = () => {
       if(!rng || !months || !months.length) return;
 
-      // Use full months array; clamp to those with a valid t mapping if needed
-      // (we map by monthStart, so months[] should match)
       rng.min = 0;
       rng.max = months.length - 1;
+      rng.step = 1;
 
-      // default target = latest month in dataset
+      // default: latest month
       rng.value = String(months.length - 1);
-
       if(lab) lab.textContent = monthLabel(months[months.length - 1]);
 
       rng.oninput = () => {
@@ -791,7 +504,6 @@ export function runPriceCheck({
       }
     };
 
-    // ---- toggle open/close panel + plot state + slider
     const setOpen = (open) => {
       if(!btn || !panel) return;
 
@@ -802,7 +514,7 @@ export function runPriceCheck({
         applyMovementOn();
         initScrubber();
 
-        // If scrubber exists, it drives the target date; otherwise fallback to latest
+        // If scrubber exists, it drives target date; otherwise show latest
         if(rng && months && months.length){
           const idx = Math.max(0, Math.min(months.length - 1, Number(rng.value || (months.length - 1))));
           renderForTarget(months[idx]);
@@ -814,59 +526,19 @@ export function runPriceCheck({
       }
     };
 
-    // Force baseline every time results render (prevents “sometimes lines appear on load”)
+    // Always start in baseline after plot renders
     applyBaseline();
 
     // Bind toggle once per run
-    if(btn && !btn.dataset.bound){
-      btn.dataset.bound = "1";
-      btn.addEventListener("click", () => {
+    if(btn){
+      btn.onclick = () => {
         const isOpen = btn.getAttribute("aria-expanded") === "true";
         setOpen(!isOpen);
-      });
-    }
+      };
 
-    // If panel is currently open for some reason, respect it
-    if(btn && btn.getAttribute("aria-expanded") === "true"){
-      setOpen(true);
-    } else {
-      setOpen(false);
-    }
-  });
-
-    // Always enforce baseline after plot
-    applyBaseline();
-
-    // If toggle already open/expanded, apply ON after a tick (lets DOM settle)
-    if(getToggleState(t)){
-      setTimeout(applyOn, 0);
-    }
-
-    // Bind events
-    if(t){
-      if(t.kind === "details"){
-        t.el.ontoggle = () => {
-          if(t.el.open) applyOn();
-          else applyBaseline();
-        };
-      } else {
-        // Click toggle: run AFTER click handler updates DOM/aria
-        t.el.onclick = () => {
-          setTimeout(() => {
-            const onNow = getToggleState(t);
-            // If no aria-expanded, we maintain our own state by toggling
-            if(!t.el.hasAttribute("aria-expanded")){
-              const next = !onNow;
-              setToggleStateFallback(t, next);
-              if(next) applyOn();
-              else applyBaseline();
-            } else {
-              if(onNow) applyOn();
-              else applyBaseline();
-            }
-          }, 0);
-        };
-      }
+      // Respect existing aria state if something else set it
+      const isOpenNow = btn.getAttribute("aria-expanded") === "true";
+      setOpen(isOpenNow);
     }
   });
 
