@@ -1,6 +1,7 @@
 // js/app.js
 import { runPriceCheck } from "./pricecheck.js?v=1";
 import { loadPriceCheckCSV } from "./data.js?v=1";
+import { renderMarketStructure } from "./marketstructure.js";
 
 const el = (id) => document.getElementById(id);
 const escapeHtml = (s) =>
