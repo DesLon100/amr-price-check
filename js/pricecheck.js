@@ -557,24 +557,23 @@ plotPromise.then(() => {
   const idxReg  = data.findIndex(t => t && t.meta === "pc_p50_reg");
 
   // DOM nodes
-  let btn   = document.getElementById("pc-move-toggle");
+  let btn      = document.getElementById("pc-move-toggle");
   const panel  = document.getElementById("pc-move");
   const moveEl = document.getElementById("pc-move-chart");
   const capEl  = document.getElementById("pc-move-caption");
 
-  // Opt-in + scrubber wrapper + axis
-  const optin = document.getElementById("pc-add-target");     // checkbox
-  const wrap  = document.getElementById("pc-target-wrap");    // container shown/hidden
-  const axis  = document.getElementById("pc-target-axis");    // tick/label row
+  // Target-month UI (MATCHES YOUR HTML)
+  const optin = document.getElementById("pc-target-enable"); // checkbox
+  const wrap  = document.getElementById("pc-target-ui");     // hidden container
+  const ticks = document.getElementById("pc-target-ticks");  // tick row
 
   const rng   = document.getElementById("pc-target-range");
   const lab   = document.getElementById("pc-target-label");
   const reset = document.getElementById("pc-target-reset");
 
-  // If key nodes missing, don't crash the rest
   if(!btn || !panel) return;
 
-  // 🔒 Kill any previous listeners from earlier runs by cloning the button
+  // Kill previous listeners from earlier runs by cloning the button
   const btnClone = btn.cloneNode(true);
   btn.parentNode.replaceChild(btnClone, btn);
   btn = btnClone;
@@ -582,57 +581,45 @@ plotPromise.then(() => {
   const monthLabel = (d) =>
     d.toLocaleString("en-GB", { month:"short", year:"numeric", timeZone:"UTC" });
 
-  const yearLabel = (d) => String(d.getUTCFullYear());
-
-  const isQuarterMonth = (d) => {
-    const m = d.getUTCMonth();     // 0=Jan
-    return (m === 0 || m === 3 || m === 6 || m === 9); // Jan/Apr/Jul/Oct
+  const isQuarterStart = (d) => {
+    const m = d.getUTCMonth(); // 0=Jan
+    return (m === 0 || m === 3 || m === 6 || m === 9);
   };
+  const isYearStart = (d) => d.getUTCMonth() === 0;
 
-  const isYearStart = (d) => d.getUTCMonth() === 0; // Jan
-
-  // Build axis: lots of quarter ticks, sparse year labels (every 2 years)
-  const buildAxis = () => {
-    if(!axis || !months || !months.length) return;
-    axis.innerHTML = "";
+  // Build ticks: quarter markers + year labels every 2 years (prevents overlap)
+  const buildTicks = () => {
+    if(!ticks || !months || !months.length) return;
+    ticks.innerHTML = "";
 
     const n = months.length;
-    if(n === 1){
-      const t = document.createElement("div");
-      t.className = "tick year";
-      t.style.left = "0%";
-      t.textContent = yearLabel(months[0]);
-      axis.appendChild(t);
-      return;
-    }
+    const pct = (i) => (n === 1 ? 0 : (i / (n - 1)) * 100);
 
     for(let i=0;i<n;i++){
       const d = months[i];
-      const pct = (i / (n - 1)) * 100;
 
-      // Quarter ticks (no text)
-      if(isQuarterMonth(d)){
-        const tick = document.createElement("div");
-        tick.className = "tick quarter";
-        tick.style.left = `${pct}%`;
-        axis.appendChild(tick);
+      // quarter marker (no text)
+      if(isQuarterStart(d)){
+        const t = document.createElement("div");
+        t.className = "tick quarter";
+        t.style.left = `${pct(i)}%`;
+        ticks.appendChild(t);
       }
 
-      // Year ticks + sparse labels (every 2 years)
+      // year line + label every 2 years
       if(isYearStart(d)){
+        const line = document.createElement("div");
+        line.className = "tick yearline";
+        line.style.left = `${pct(i)}%`;
+        ticks.appendChild(line);
+
         const y = d.getUTCFullYear();
-
-        const tick = document.createElement("div");
-        tick.className = "tick yearline";
-        tick.style.left = `${pct}%`;
-        axis.appendChild(tick);
-
         if(y % 2 === 0){
           const lbl = document.createElement("div");
           lbl.className = "tick yearlabel";
-          lbl.style.left = `${pct}%`;
+          lbl.style.left = `${pct(i)}%`;
           lbl.textContent = String(y);
-          axis.appendChild(lbl);
+          ticks.appendChild(lbl);
         }
       }
     }
@@ -641,7 +628,7 @@ plotPromise.then(() => {
   const hideTargetUI = () => {
     if(optin) optin.checked = false;
     if(wrap)  wrap.classList.add("hidden");
-    if(axis)  axis.innerHTML = "";
+    if(ticks) ticks.innerHTML = "";
   };
 
   const applyBaseline = () => {
@@ -698,10 +685,7 @@ plotPromise.then(() => {
 
     rng.min = 0;
     rng.max = months.length - 1;
-
-    // default target = latest month in dataset
     rng.value = String(months.length - 1);
-    if(lab) lab.textContent = monthLabel(months[months.length - 1]);
 
     rng.oninput = () => {
       const idx = Math.max(0, Math.min(months.length - 1, Number(rng.value)));
@@ -715,13 +699,13 @@ plotPromise.then(() => {
       };
     }
 
-    buildAxis();
+    buildTicks();
   };
 
-  // Always start baseline
+  // baseline always after plot completes
   applyBaseline();
 
-  // Bind opt-in checkbox (if present)
+  // opt-in checkbox controls the date slider visibility
   if(optin){
     optin.onchange = () => {
       const on = !!optin.checked;
@@ -733,30 +717,25 @@ plotPromise.then(() => {
         const idx = Math.max(0, Math.min(months.length - 1, Number(rng?.value || (months.length - 1))));
         renderForTarget(months[idx]);
       } else {
-        // revert to "today" translation
+        if(ticks) ticks.innerHTML = "";
         renderForTarget(monthStartUTC(latestDate));
-        if(axis) axis.innerHTML = "";
       }
     };
   }
 
-  // Bind FMV toggle
+  // FMV toggle
   btn.addEventListener("click", () => {
     const isOpen = btn.getAttribute("aria-expanded") === "true";
     if(isOpen){
       applyBaseline();
     } else {
       applyMovementOn();
-
-      // Show "today" valuation first (value slider only)
-      renderForTarget(monthStartUTC(latestDate));
-
-      // keep target-month UI hidden unless user opts in
-      hideTargetUI();
+      renderForTarget(monthStartUTC(latestDate)); // show today first
+      hideTargetUI(); // target month hidden until user opts in
     }
   });
 });
 
-// IMPORTANT: return must be OUTSIDE plotPromise.then, and only once.
+// IMPORTANT: return is inside runPriceCheck, after plotPromise.then
 return { pct, equivNow: impliedValueAt(monthStartUTC(latestDate)), plotPromise };
 }
