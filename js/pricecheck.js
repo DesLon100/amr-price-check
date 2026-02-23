@@ -759,3 +759,4 @@ plotPromise.then(() => {
 
 // IMPORTANT: return must be OUTSIDE plotPromise.then, and only once.
 return { pct, equivNow: impliedValueAt(monthStartUTC(latestDate)), plotPromise };
+   }
