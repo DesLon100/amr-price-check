@@ -641,7 +641,7 @@ export function runPriceCheck({
   // Your headline copy for the section
   const FMV_COPY =
     "Fair market value is best estimated from the market’s central tendency, not its extremes.\n" +
-    "This module calculates a 24-month rolling median (p50) of auction prices and fits a trend line to represent the artist’s underlying market level.\n" +
+    "This module calculates a 24-month rolling median (p50) of auction prices and fits a trend line.\n" +
     "We then revalue your purchase price by the movement of that trend from your purchase date.";
 
   plotPromise.then(() => {
@@ -713,10 +713,12 @@ export function runPriceCheck({
     const renderLatest = () => {
       if(Number.isFinite(equivLatest)){
         renderMovement(moveEl, {
-          price,
-          equivNow: equivLatest,
-          captionText: "For retrospective valuations, add target month to recalculate."
-        });
+  purchaseMonth,
+  targetMonth: monthStartUTC(latestDate),
+  price,
+  equivNow: equivLatest,
+  captionText: "For retrospective valuations, add target month to recalculate."
+});
       } else {
         moveEl.innerHTML = "";
       }
@@ -783,10 +785,12 @@ export function runPriceCheck({
         }
 
         renderMovement(moveEl, {
-          price,
-          equivNow: equiv,
-          captionText: "For retrospective valuations, add target month to recalculate."
-        });
+  purchaseMonth,
+  targetMonth: d2,
+  price,
+  equivNow: equiv,
+  captionText: "For retrospective valuations, add target month to recalculate."
+});
 
         setRevalDot(d2, equiv, true);
 
