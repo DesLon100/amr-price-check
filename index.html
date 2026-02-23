@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Artwork Price Check</title>
 
-  <!-- Plotly (upgrade fixes the Event.target getter crash) -->
+  <!-- Plotly -->
   <script src="https://cdn.plot.ly/plotly-3.3.0.min.js"></script>
 
   <link rel="stylesheet" href="css/app.css" />
@@ -27,7 +27,6 @@
       <div class="hero">
         <h1 class="hero-title">
           <span class="hero-title-text">Check my artwork's price</span>
-          <!-- hero dot (hidden until results) -->
           <span id="hero-dot" class="hero-dot hidden" aria-hidden="true"></span>
         </h1>
         <p class="hero-sub">Instantly see where your artwork sits in the auction market.</p>
@@ -66,7 +65,6 @@
         <div class="pc-chart-wrap">
           <div id="pc-universe" class="pc-chart"></div>
 
-          <!-- Linear / Log toggle -->
           <div class="pc-toggle-row">
             <span class="muted">Linear</span>
             <label class="switch">
@@ -95,33 +93,29 @@
           </button>
         </div>
 
-<div id="pc-move" class="pc-bands hidden">
-  <div id="pc-move-chart" class="pc-bands-chart"></div>
-  <div id="pc-move-caption" class="pc-bands-caption"></div>
+        <!-- Collapsible movement -->
+        <div id="pc-move" class="pc-bands hidden">
+          <div id="pc-move-chart" class="pc-bands-chart"></div>
+          <div id="pc-move-caption" class="pc-bands-caption"></div>
 
- <!-- NEW: target month toggle + scrubber (below the value slider) -->
-<div id="pc-target-wrap" class="pc-target-wrap">
+          <!-- NEW: Add target month (no second slider) -->
+          <div class="pc-target-wrap" style="margin-top:10px;">
+            <label class="pc-target-check" style="display:flex;gap:8px;align-items:center;">
+              <input id="pc-add-target" type="checkbox" />
+              <span>Add target month</span>
+            </label>
 
-  <label class="pc-target-check">
-    <input id="pc-add-target" type="checkbox" />
-    <span>Add target month</span>
-  </label>
-
-  <div id="pc-target-ui" class="pc-move-scrub hidden">
-    <div class="pc-move-scrub-top">
-      <span class="muted">Target month:</span>
-      <strong id="pc-target-label">—</strong>
-
-      <button id="pc-target-reset" class="btn ghost" type="button"
-        style="margin-left:auto;padding:6px 10px;">
-        Today
-      </button>
-    </div>
-
-    <input id="pc-target-range" type="range" min="0" max="0" step="1" value="0" />
-
-    <!-- ticks/labels injected by JS -->
-    <div id="pc-target-axis" class="pc-target-ticks" aria-hidden="true"></div>
+            <div id="pc-target-ui" class="hidden" style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <input
+                id="pc-target-month"
+                type="text"
+                placeholder="YYYYMM (e.g. 201906) or YYYY-MM"
+                style="min-width:220px;"
+              />
+              <span class="muted" id="pc-target-hint" style="font-size:12px;"></span>
+            </div>
+          </div>
+        </div>
 
         <!-- Back button -->
         <div class="pc-actions">
@@ -132,7 +126,6 @@
     </section>
   </div>
 
-  <!-- Cache-bust -->
   <script type="module" src="js/app.js?v=1"></script>
 </body>
 </html>
