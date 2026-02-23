@@ -637,3 +637,6 @@ body{
   border-color:#b8c0d3;
   box-shadow:0 0 0 3px rgba(44,58,92,.10);
 }
+.pc-advanced .hidden { display:none; }
+.pc-toggle { /* match your button styling */ }
+.pc-note { font-size: 12px; opacity: .8; margin-top: 10px; }
