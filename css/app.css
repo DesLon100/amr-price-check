@@ -478,31 +478,47 @@ body{
 .pc-target-ticks{
   position: relative;
   height: 22px;
-  margin-top: 8px;
+  margin-top: 6px;
 }
-
-.pc-target-tick{
-  position:absolute;
-  bottom: 10px;
-  width:1px;
-  background: rgba(44,58,92,0.25);
-  transform: translateX(-0.5px);
-}
-
-.pc-target-tick.quarter{
-  height: 7px;
-}
-
-.pc-target-tick.year{
-  height: 11px;
-  background: rgba(44,58,92,0.40);
-}
-
-.pc-target-label{
-  position:absolute;
-  bottom: 0;
+.pc-target-ticks .tick{
+  position: absolute;
+  top: 0;
   transform: translateX(-50%);
-  font-size: 11px;
-  color: rgba(44,58,92,0.70);
+  width: 1px;
+  height: 10px;
+  background: #cfd5e3;
+}
+.pc-target-ticks .tick.label{
+  height: 10px;
+}
+.pc-target-ticks .tick.label::after{
+  content: attr(data-label);
+}
+.pc-target-ticks .tick.label{
+  background: #bfc7da;
+}
+.pc-target-ticks .tick.label{
+  width: 1px;
+}
+.pc-target-ticks .tick.label{
+  /* label text */
+}
+.pc-target-ticks .tick.label{
+  /* keep simple: put text in the element */
+  color:#7a8296;
+  font-size: 12px;
   white-space: nowrap;
+  padding-top: 10px;
+  background: transparent; /* don’t draw a thick bar */
+}
+
+/* date slider: no “thermometer fill” look */
+#pc-target-range{
+  accent-color: #2f3b63; /* knob color */
+}
+#pc-target-range::-webkit-slider-runnable-track{
+  background: #d9dde7;
+}
+#pc-target-range::-moz-range-track{
+  background: #d9dde7;
 }
