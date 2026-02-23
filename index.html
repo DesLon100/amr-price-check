@@ -95,12 +95,15 @@
           </button>
         </div>
 
-        <!-- Collapsible movement -->
-        <!-- Collapsible movement -->
 <div id="pc-move" class="pc-bands hidden">
+  <!-- NEW: opt-in target month -->
+  <label class="pc-target-optin">
+    <input id="pc-add-target" type="checkbox" />
+    <span>Add target month</span>
+  </label>
 
-  <!-- NEW: drag-to-date scrubber -->
-  <div class="pc-move-scrub">
+  <!-- date scrubber (hidden unless opt-in checked) -->
+  <div id="pc-target-wrap" class="pc-move-scrub hidden">
     <div class="pc-move-scrub-top">
       <span class="muted">Target month:</span>
       <strong id="pc-target-label">—</strong>
@@ -108,7 +111,11 @@
         Today
       </button>
     </div>
-    <input id="pc-target-range" type="range" min="0" max="0" step="1" value="0" />
+
+    <input id="pc-target-range" class="pc-date-range" type="range" min="0" max="0" step="1" value="0" />
+
+    <!-- axis with labels (we'll populate in JS) -->
+    <div id="pc-target-axis" class="pc-date-axis" aria-hidden="true"></div>
   </div>
 
   <div id="pc-move-chart" class="pc-bands-chart"></div>
