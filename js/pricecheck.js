@@ -398,40 +398,51 @@ function renderMovement(el, {
   // We keep it simple: no change needed here unless you want a full dual-axis chart.
 
   Plotly.newPlot(el, [
-    // track
-    {
-      x:[range[0], range[1]], y:[0,0], mode:"lines",
-      line:{width:12,color:"rgba(44,58,92,0.10)"},
-      hoverinfo:"skip", showlegend:false
-    },
-    // my marker
-    {
-      x:[price], y:[0], mode:"markers",
-      marker:{size:12,color:C_MY_FILL,line:{width:3,color:C_MY_STROKE}},
-      hoverinfo:"skip", showlegend:false
-    },
-    // reval marker
-    {
-      x:[equivNow], y:[0], mode:"markers",
-      marker:{size:11,color:C_REV_FILL},
-      hoverinfo:"skip", showlegend:false
-    }
-  ],{
-    margin:{l:22,r:22,t:18,b:42},
-    xaxis:{
-      range,
-      showgrid:false,
-      zeroline:false,
-      showline:false,
-      ticks:"outside",
-      ticklen:4,
-      separatethousands:true
-    },
-    yaxis:{visible:false, range:[-0.6,0.6]},
-    annotations,
-    paper_bgcolor:"rgba(0,0,0,0)",
-    plot_bgcolor:"rgba(0,0,0,0)"
-  },{displayModeBar:false, responsive:true});
+  // track
+  {
+    x:[range[0], range[1]], y:[0,0],
+    mode:"lines",
+    line:{width:12,color:"rgba(44,58,92,0.10)"},
+    hoverinfo:"skip",
+    showlegend:false
+  },
+
+  // My artwork (dot + bubble)
+  {
+    x:[price], y:[0],
+    mode:"markers+text",
+    marker:{size:12,color:"#fee7b1",line:{width:3,color:"#2c3a5c"}},
+    text:[`My Artwork<br><b>${fmtGBP(price)}</b>`],
+    textposition:"top center",
+    textfont:{size:12},
+    cliponaxis:false,
+    hoverinfo:"skip",
+    showlegend:false
+  },
+
+  // Revaluation (dot + bubble)
+  {
+    x:[equivNow], y:[0],
+    mode:"markers+text",
+    marker:{size:11,color:"#2c3a5c"},
+    text:[`Revaluation<br><b>${fmtGBP(equivNow)}</b>`],
+    textposition:"top center",
+    textfont:{size:12},
+    cliponaxis:false,
+    hoverinfo:"skip",
+    showlegend:false
+  }
+],{
+  margin:{l:16,r:16,t:44,b:34},          // ↑ more top space for bubbles
+  xaxis:{
+    range,
+    showgrid:false, zeroline:false, showline:false,
+    ticks:"outside", ticklen:4, separatethousands:true
+  },
+  yaxis:{visible:false, range:[-1.2, 0.9]}, // ↑ room above y=0 for bubbles
+  paper_bgcolor:"rgba(0,0,0,0)",
+  plot_bgcolor:"rgba(0,0,0,0)"
+},{displayModeBar:false, responsive:true});
 
   const capEl = document.getElementById("pc-move-caption");
   if(capEl) capEl.textContent = captionText;
