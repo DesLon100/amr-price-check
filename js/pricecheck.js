@@ -544,7 +544,7 @@ export function runPriceCheck({
     return price * (pTarget / pInput);
   }
 
- // ---------- deterministic UI binding ----------
+// ---------- deterministic UI binding ----------
 plotPromise.then(() => {
   const gd = elChart;
 
@@ -557,21 +557,21 @@ plotPromise.then(() => {
   const idxReg  = data.findIndex(t => t && t.meta === "pc_p50_reg");
 
   // DOM nodes
-  let btn = document.getElementById("pc-move-toggle");
-  const panel = document.getElementById("pc-move");
+  let btn   = document.getElementById("pc-move-toggle");
+  const panel  = document.getElementById("pc-move");
   const moveEl = document.getElementById("pc-move-chart");
   const capEl  = document.getElementById("pc-move-caption");
 
   // Opt-in + scrubber wrapper + axis
-  const optin = document.getElementById("pc-add-target");
-  const wrap  = document.getElementById("pc-target-wrap");
-  const axis  = document.getElementById("pc-target-axis");
+  const optin = document.getElementById("pc-add-target");     // checkbox
+  const wrap  = document.getElementById("pc-target-wrap");    // container shown/hidden
+  const axis  = document.getElementById("pc-target-axis");    // tick/label row
 
   const rng   = document.getElementById("pc-target-range");
   const lab   = document.getElementById("pc-target-label");
   const reset = document.getElementById("pc-target-reset");
 
-  // If any of these are missing, don't crash the rest
+  // If key nodes missing, don't crash the rest
   if(!btn || !panel) return;
 
   // 🔒 Kill any previous listeners from earlier runs by cloning the button
@@ -582,31 +582,66 @@ plotPromise.then(() => {
   const monthLabel = (d) =>
     d.toLocaleString("en-GB", { month:"short", year:"numeric", timeZone:"UTC" });
 
-  // Build a simple month axis (yearly ticks + endpoints)
+  const yearLabel = (d) => String(d.getUTCFullYear());
+
+  const isQuarterMonth = (d) => {
+    const m = d.getUTCMonth();     // 0=Jan
+    return (m === 0 || m === 3 || m === 6 || m === 9); // Jan/Apr/Jul/Oct
+  };
+
+  const isYearStart = (d) => d.getUTCMonth() === 0; // Jan
+
+  // Build axis: lots of quarter ticks, sparse year labels (every 2 years)
   const buildAxis = () => {
     if(!axis || !months || !months.length) return;
     axis.innerHTML = "";
 
-    const idxs = new Set([0, months.length - 1]);
-    for(let i = 0; i < months.length; i += 12) idxs.add(i);
+    const n = months.length;
+    if(n === 1){
+      const t = document.createElement("div");
+      t.className = "tick year";
+      t.style.left = "0%";
+      t.textContent = yearLabel(months[0]);
+      axis.appendChild(t);
+      return;
+    }
 
-    const sorted = Array.from(idxs).sort((a,b)=>a-b);
-    for(const i of sorted){
-      const pct = (months.length === 1) ? 0 : (i / (months.length - 1)) * 100;
+    for(let i=0;i<n;i++){
       const d = months[i];
+      const pct = (i / (n - 1)) * 100;
 
-      const tick = document.createElement("div");
-      tick.className = "tick";
-      tick.style.left = `${pct}%`;
-      tick.textContent = monthLabel(d);
-      axis.appendChild(tick);
+      // Quarter ticks (no text)
+      if(isQuarterMonth(d)){
+        const tick = document.createElement("div");
+        tick.className = "tick quarter";
+        tick.style.left = `${pct}%`;
+        axis.appendChild(tick);
+      }
+
+      // Year ticks + sparse labels (every 2 years)
+      if(isYearStart(d)){
+        const y = d.getUTCFullYear();
+
+        const tick = document.createElement("div");
+        tick.className = "tick yearline";
+        tick.style.left = `${pct}%`;
+        axis.appendChild(tick);
+
+        if(y % 2 === 0){
+          const lbl = document.createElement("div");
+          lbl.className = "tick yearlabel";
+          lbl.style.left = `${pct}%`;
+          lbl.textContent = String(y);
+          axis.appendChild(lbl);
+        }
+      }
     }
   };
 
   const hideTargetUI = () => {
     if(optin) optin.checked = false;
-    if(wrap) wrap.classList.add("hidden");
-    if(axis) axis.innerHTML = "";
+    if(wrap)  wrap.classList.add("hidden");
+    if(axis)  axis.innerHTML = "";
   };
 
   const applyBaseline = () => {
@@ -622,7 +657,6 @@ plotPromise.then(() => {
     if(moveEl) moveEl.innerHTML = "";
     if(capEl) capEl.textContent = "";
 
-    // NEW: reset/hide target-month UI
     hideTargetUI();
   };
 
@@ -639,8 +673,8 @@ plotPromise.then(() => {
 
   const renderForTarget = (targetDateUTC) => {
     if(!moveEl) return;
-    const equiv = impliedValueAt(targetDateUTC);
 
+    const equiv = impliedValueAt(targetDateUTC);
     if(lab) lab.textContent = monthLabel(targetDateUTC);
 
     if(Number.isFinite(equiv)){
@@ -681,7 +715,6 @@ plotPromise.then(() => {
       };
     }
 
-    // NEW: axis labels under the slider
     buildAxis();
   };
 
@@ -693,19 +726,14 @@ plotPromise.then(() => {
     optin.onchange = () => {
       const on = !!optin.checked;
 
-      // Show/hide the date slider block
       if(wrap) wrap.classList.toggle("hidden", !on);
 
       if(on){
         initScrubber();
-
-        // Once visible, drive the target immediately
-        if(rng && months && months.length){
-          const idx = Math.max(0, Math.min(months.length - 1, Number(rng.value)));
-          renderForTarget(months[idx]);
-        }
+        const idx = Math.max(0, Math.min(months.length - 1, Number(rng?.value || (months.length - 1))));
+        renderForTarget(months[idx]);
       } else {
-        // Revert to "today" (latest)
+        // revert to "today" translation
         renderForTarget(monthStartUTC(latestDate));
         if(axis) axis.innerHTML = "";
       }
@@ -720,14 +748,14 @@ plotPromise.then(() => {
     } else {
       applyMovementOn();
 
-      // Always show "today" valuation first (value slider only)
+      // Show "today" valuation first (value slider only)
       renderForTarget(monthStartUTC(latestDate));
 
-      // NEW: keep target-month UI hidden unless user opts in
+      // keep target-month UI hidden unless user opts in
       hideTargetUI();
     }
   });
 });
 
+// IMPORTANT: return must be OUTSIDE plotPromise.then, and only once.
 return { pct, equivNow: impliedValueAt(monthStartUTC(latestDate)), plotPromise };
-  }
