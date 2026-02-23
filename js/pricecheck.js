@@ -205,6 +205,14 @@ const LOCATION_LOOKUP = {
   "SOTHSAAR": "Sothebys · SAUDI ARABIA"
 };
 
+// js/pricecheck.js
+
+// ------------------------------------------------------------
+// LocationCode -> "Auction house · CITY" mapping (197 entries)
+// ------------------------------------------------------------
+// KEEP YOUR LOCATION_LOOKUP EXACTLY AS-IS ABOVE THIS LINE
+// const LOCATION_LOOKUP = { ... };
+
 // Convert "House · CITY" -> "House (City)" for tooltips
 function locationLabel(code){
   const c = String(code || "").trim();
@@ -265,7 +273,6 @@ function windowN(allRows, endDate, months){
   return allRows.filter(r => r.date >= start && r.date <= endDate);
 }
 
-// Month key used for stable lookups
 function monthKeyUTC(d){
   const y = d.getUTCFullYear();
   const m = String(d.getUTCMonth() + 1).padStart(2, "0");
@@ -354,7 +361,7 @@ function renderMovement(el, { price, equivNow, captionText = "" }){
   if(capEl) capEl.textContent = captionText;
 }
 
-// CSV fields (now coming cleanly from data.js)
+// CSV fields
 function getLocationCode(r){ return String(r.LocationCode ?? "").trim(); }
 function getLotNo(r){ return String(r.LotNo ?? "").trim() || "—"; }
 function getSaleURL(r){ return String(r.SaleURL ?? "").trim(); }
@@ -395,7 +402,6 @@ export function runPriceCheck({
     "Lot %{customdata[1]}" +
     "<extra>Click dot to open sale</extra>";
 
-  // Scatter: NORMAL colour on initial load
   const baseTrace = {
     x, y, customdata,
     type:"scattergl",
@@ -406,9 +412,7 @@ export function runPriceCheck({
     meta:"pc_base"
   };
 
-  // ------------------------------------------------------------
-  // Precompute 24M rolling p50 + regression (but DO NOT display yet)
-  // ------------------------------------------------------------
+  // ---------- rolling p50 + regression ----------
   const months = buildMonthRangeUTC(all[0].date, all[all.length-1].date);
   const allM = all.map(r => ({ ...r, _m: monthStartUTC(r.date) }));
 
@@ -461,47 +465,15 @@ export function runPriceCheck({
     }
   }
 
-  // Optional “my percentile” rolling line (computed; only shown if you have a checkbox for it)
   const purchaseMonth = monthStartUTC(artworkDate);
-  const thenWin = windowN(all, purchaseMonth, TRANSPORT_WINDOW_MONTHS);
-  const thenPricesWin = thenWin.map(r=>r.price).filter(Number.isFinite).sort((a,b)=>a-b);
-  const q0 = (thenPricesWin.length >= MIN_SALES_IN_WINDOW && Number.isFinite(price))
-    ? (percentileRank(thenPricesWin, price) / 100)
-    : NaN;
 
-  const qDates = [];
-  const qVals  = [];
-  if(Number.isFinite(q0)){
-    startPtr = 0;
-    endPtr = 0;
-    for(let i=0;i<months.length;i++){
-      const endMonth = months[i];
-      const startMonth = addMonthsUTC(endMonth, -(TRANSPORT_WINDOW_MONTHS - 1));
-
-      while(endPtr < allM.length && allM[endPtr]._m <= endMonth) endPtr++;
-      while(startPtr < allM.length && allM[startPtr]._m < startMonth) startPtr++;
-
-      const win = allM.slice(startPtr, endPtr);
-      if(win.length < MIN_SALES_IN_WINDOW) continue;
-
-      const prices = win.map(r=>r.price).filter(Number.isFinite).sort((a,b)=>a-b);
-      if(prices.length < MIN_SALES_IN_WINDOW) continue;
-
-      const v = quantile(prices, q0);
-      if(Number.isFinite(v) && v > 0){
-        qDates.push(endMonth);
-        qVals.push(v);
-      }
-    }
-  }
-
-  // Lines as SVG scatter so they draw above WebGL dots
+  // SVG lines so they always draw ABOVE WebGL dots
   const p50Trace = (p50Dates.length >= 2) ? {
     x: p50Dates,
     y: p50Vals,
     type:"scatter",
     mode:"lines",
-    line:{width:4.0, color:"rgba(47,59,99,0.45)"},
+    line:{width:4, color:"rgba(47,59,99,0.45)"},
     hovertemplate:"24M rolling median (p50)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
     showlegend:false,
     visible:false,
@@ -513,23 +485,11 @@ export function runPriceCheck({
     y: regVals,
     type:"scatter",
     mode:"lines",
-    line:{width:5.0, color:"rgba(47,59,99,0.90)"},
+    line:{width:5, color:"rgba(47,59,99,0.90)"},
     hovertemplate:"Trend line (regression through rolling p50)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
     showlegend:false,
     visible:false,
     meta:"pc_p50_reg"
-  } : null;
-
-  const myPctTrace = (qDates.length >= 2) ? {
-    x: qDates,
-    y: qVals,
-    type:"scatter",
-    mode:"lines",
-    line:{width:2.5, dash:"dot", color:"rgba(246,189,116,0.95)"},
-    hovertemplate:"My percentile (24M rolling)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
-    showlegend:false,
-    visible:false,
-    meta:"pc_mypercentile_24"
   } : null;
 
   const myArtworkTrace = Number.isFinite(price) ? {
@@ -543,12 +503,9 @@ export function runPriceCheck({
     meta:"pc_myartwork"
   } : null;
 
-  // Order: dots first, then SVG lines, then artwork marker last
-  const traces = [];
-  traces.push(baseTrace);
+  const traces = [baseTrace];
   if(p50Trace) traces.push(p50Trace);
   if(regTrace) traces.push(regTrace);
-  if(myPctTrace) traces.push(myPctTrace);
   if(myArtworkTrace) traces.push(myArtworkTrace);
 
   const plotPromise = Plotly.newPlot(elChart, traces, {
@@ -560,16 +517,12 @@ export function runPriceCheck({
     plot_bgcolor:"rgba(0,0,0,0)"
   }, {responsive:true, displayModeBar:false});
 
-  // ------------------------------------------------------------
   // Percentile at purchase month (unchanged)
-  // ------------------------------------------------------------
   const thenUniverse = all.filter(r => r.date <= artworkDate);
   const thenPricesAll = thenUniverse.map(r=>r.price).sort((a,b)=>a-b);
   const pct = percentileRank(thenPricesAll, price);
 
-  // ------------------------------------------------------------
-  // Revaluation helper (input month -> target month)
-  // ------------------------------------------------------------
+  // regression revaluation for "today"
   function impliedValueAt(targetMonthUTC){
     if(!reg || !Number.isFinite(price) || price <= 0) return null;
 
@@ -591,41 +544,35 @@ export function runPriceCheck({
     return price * (pTarget / pInput);
   }
 
-  let equivNow = null;
-  try{
-    equivNow = impliedValueAt(monthStartUTC(latestDate));
-  } catch(e){
-    equivNow = null;
-  }
-
-  // ------------------------------------------------------------
-  // UI behaviour: deterministic, tied to your actual button
-  // (#pc-move-toggle opens/closes #pc-move)
-  // ------------------------------------------------------------
+  // ---------- deterministic UI binding ----------
   plotPromise.then(() => {
-    const btn   = document.getElementById("pc-move-toggle");
-    const panel = document.getElementById("pc-move");
-
-    const moveEl = document.getElementById("pc-move-chart");
-    const capEl  = document.getElementById("pc-move-caption");
-
-    // Optional scrubber elements (only if you added them in HTML)
-    const rng   = document.getElementById("pc-target-range");
-    const lab   = document.getElementById("pc-target-label");
-    const reset = document.getElementById("pc-target-reset");
+    const gd = elChart;
 
     const DARK_DOT  = "#2f3b63";
     const LIGHT_DOT = "#9bb7e0";
 
-    const gd = elChart;
     const data = (gd && gd.data) ? gd.data : [];
-
     const idxBase = data.findIndex(t => t && t.meta === "pc_base");
     const idxP50  = data.findIndex(t => t && t.meta === "pc_p50_24");
     const idxReg  = data.findIndex(t => t && t.meta === "pc_p50_reg");
-    const idxMy   = data.findIndex(t => t && t.meta === "pc_mypercentile_24");
 
-    const cbPct = document.getElementById("pc-show-mypercentile"); // only if you have it somewhere
+    // DOM nodes
+    let btn = document.getElementById("pc-move-toggle");
+    const panel = document.getElementById("pc-move");
+    const moveEl = document.getElementById("pc-move-chart");
+    const capEl  = document.getElementById("pc-move-caption");
+
+    const rng   = document.getElementById("pc-target-range");
+    const lab   = document.getElementById("pc-target-label");
+    const reset = document.getElementById("pc-target-reset");
+
+    // If any of these are missing, don't crash the rest
+    if(!btn || !panel) return;
+
+    // 🔒 Kill any previous listeners from earlier runs by cloning the button
+    const btnClone = btn.cloneNode(true);
+    btn.parentNode.replaceChild(btnClone, btn);
+    btn = btnClone;
 
     const monthLabel = (d) =>
       d.toLocaleString("en-GB", { month:"short", year:"numeric", timeZone:"UTC" });
@@ -634,12 +581,14 @@ export function runPriceCheck({
       if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": DARK_DOT }, [idxBase]);
       if(idxP50  >= 0) Plotly.restyle(gd, { visible:false }, [idxP50]);
       if(idxReg  >= 0) Plotly.restyle(gd, { visible:false }, [idxReg]);
-      if(idxMy   >= 0) Plotly.restyle(gd, { visible:false }, [idxMy]);
-      if(cbPct) cbPct.checked = false;
+
+      panel.classList.add("hidden");
+      btn.setAttribute("aria-expanded", "false");
+      const chev = btn.querySelector(".chev");
+      if(chev) chev.textContent = "▾";
 
       if(moveEl) moveEl.innerHTML = "";
       if(capEl) capEl.textContent = "";
-      if(lab) lab.textContent = "—";
     };
 
     const applyMovementOn = () => {
@@ -647,18 +596,16 @@ export function runPriceCheck({
       if(idxP50  >= 0) Plotly.restyle(gd, { visible:true }, [idxP50]);
       if(idxReg  >= 0) Plotly.restyle(gd, { visible:true }, [idxReg]);
 
-      if(cbPct && idxMy >= 0){
-        cbPct.onchange = () => {
-          Plotly.restyle(gd, { visible: cbPct.checked ? true : false }, [idxMy]);
-        };
-        cbPct.onchange();
-      }
+      panel.classList.remove("hidden");
+      btn.setAttribute("aria-expanded", "true");
+      const chev = btn.querySelector(".chev");
+      if(chev) chev.textContent = "▴";
     };
 
     const renderForTarget = (targetDateUTC) => {
       if(!moveEl) return;
-
       const equiv = impliedValueAt(targetDateUTC);
+
       if(lab) lab.textContent = monthLabel(targetDateUTC);
 
       if(Number.isFinite(equiv)){
@@ -666,14 +613,13 @@ export function runPriceCheck({
           price,
           equivNow: equiv,
           captionText:
-            "Indicative FMV translation based on the artist’s 24-month rolling median (p50) trend. " +
-            "Drag the target month to translate the same input price across time."
+            "This uses the artist’s 24-month rolling median (p50) trend. Move the target month to translate the same input value across time."
         });
       } else {
         moveEl.innerHTML = "";
         if(capEl){
           capEl.textContent =
-            "Not enough auction activity around one of the selected dates to compute an FMV translation.";
+            "Not enough auction activity around one of the selected dates to compute a fair-market translation.";
         }
       }
     };
@@ -683,9 +629,8 @@ export function runPriceCheck({
 
       rng.min = 0;
       rng.max = months.length - 1;
-      rng.step = 1;
 
-      // default: latest month
+      // default target = latest month in dataset
       rng.value = String(months.length - 1);
       if(lab) lab.textContent = monthLabel(months[months.length - 1]);
 
@@ -702,43 +647,27 @@ export function runPriceCheck({
       }
     };
 
-    const setOpen = (open) => {
-      if(!btn || !panel) return;
+    // Always start baseline
+    applyBaseline();
 
-      btn.setAttribute("aria-expanded", open ? "true" : "false");
-      panel.classList.toggle("hidden", !open);
-
-      if(open){
+    // Bind toggle
+    btn.addEventListener("click", () => {
+      const isOpen = btn.getAttribute("aria-expanded") === "true";
+      if(isOpen){
+        applyBaseline();
+      } else {
         applyMovementOn();
         initScrubber();
 
-        // If scrubber exists, it drives target date; otherwise show latest
         if(rng && months && months.length){
-          const idx = Math.max(0, Math.min(months.length - 1, Number(rng.value || (months.length - 1))));
+          const idx = Math.max(0, Math.min(months.length - 1, Number(rng.value)));
           renderForTarget(months[idx]);
         } else {
           renderForTarget(monthStartUTC(latestDate));
         }
-      } else {
-        applyBaseline();
       }
-    };
-
-    // Always start in baseline after plot renders
-    applyBaseline();
-
-    // Bind toggle once per run
-    if(btn){
-      btn.onclick = () => {
-        const isOpen = btn.getAttribute("aria-expanded") === "true";
-        setOpen(!isOpen);
-      };
-
-      // Respect existing aria state if something else set it
-      const isOpenNow = btn.getAttribute("aria-expanded") === "true";
-      setOpen(isOpenNow);
-    }
+    });
   });
 
-  return { pct, equivNow, plotPromise };
+  return { pct, equivNow: impliedValueAt(monthStartUTC(latestDate)), plotPromise };
 }
