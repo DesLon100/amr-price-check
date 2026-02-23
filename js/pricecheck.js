@@ -317,23 +317,36 @@ function ols(xs, ys){
   return { a, b };
 }
 
-// Movement slider (FMV) — used inside the collapsible panel
-function renderMovement(el, { price, equivNow, captionText = "" }){
+// Movement slider (FMV) — DATE axis, bubbles show £ values
+function renderMovement(el, {
+  purchaseMonth,
+  targetMonth,
+  price,
+  equivNow,
+  captionText = ""
+}){
   if(!el) return;
 
+  if(!(purchaseMonth instanceof Date) || !(targetMonth instanceof Date)){
+    el.innerHTML = "";
+    return;
+  }
   if(!Number.isFinite(price) || !Number.isFinite(equivNow)){
     el.innerHTML = "";
     return;
   }
 
-  const xmin = Math.min(price, equivNow);
-  const xmax = Math.max(price, equivNow);
-  const pad  = (xmax - xmin) * 0.18 || (xmax * 0.10) || 1;
-  const range = [Math.max(0, xmin - pad), xmax + pad];
+  // Ensure month-start UTC
+  const x0 = monthStartUTC(purchaseMonth);
+  const x1 = monthStartUTC(targetMonth);
+
+  // Rail range: a little padding left/right (in months)
+  const minX = (x0 < x1) ? addMonthsUTC(x0, -6) : addMonthsUTC(x1, -6);
+  const maxX = (x0 > x1) ? addMonthsUTC(x0,  6) : addMonthsUTC(x1,  6);
 
   const ann = [
     {
-      x: price, y: 0,
+      x: x0, y: 0,
       xref:"x", yref:"y",
       text: `My Artwork<br><b>${fmtGBP(price)}</b>`,
       showarrow:false,
@@ -348,7 +361,7 @@ function renderMovement(el, { price, equivNow, captionText = "" }){
       borderpad:6
     },
     {
-      x: equivNow, y: 0,
+      x: x1, y: 0,
       xref:"x", yref:"y",
       text: `Revaluation<br><b>${fmtGBP(equivNow)}</b>`,
       showarrow:false,
@@ -365,38 +378,44 @@ function renderMovement(el, { price, equivNow, captionText = "" }){
   ];
 
   Plotly.newPlot(el, [
-    // Baseline track
+    // baseline rail
     {
-      x:[range[0], range[1]], y:[0,0],
+      x:[minX, maxX], y:[0,0],
       mode:"lines",
       line:{width:12,color:"rgba(44,58,92,0.10)"},
       hoverinfo:"skip",
       showlegend:false
     },
 
-    // My Artwork dot
+    // My Artwork dot (date positioned)
     {
-      x:[price], y:[0],
+      x:[x0], y:[0],
       mode:"markers",
       marker:{size:12,color:"#fee7b1",line:{width:3,color:"#2c3a5c"}},
       hoverinfo:"skip",
       showlegend:false
     },
 
-    // Revaluation dot
+    // Revaluation dot (date positioned)
     {
-      x:[equivNow], y:[0],
+      x:[x1], y:[0],
       mode:"markers",
       marker:{size:11,color:"#2c3a5c"},
       hoverinfo:"skip",
       showlegend:false
     }
   ],{
-    margin:{l:22,r:22,t:62,b:34},           // extra space so bubbles never clip
+    margin:{l:22,r:22,t:62,b:38},
     xaxis:{
-      range,
-      showgrid:false, zeroline:false, showline:false,
-      ticks:"outside", ticklen:4, separatethousands:true
+      type:"date",
+      range:[minX, maxX],
+      showgrid:false,
+      zeroline:false,
+      showline:false,
+      ticks:"outside",
+      ticklen:4,
+      tickformat:"%Y",
+      dtick:"M24" // every 2 years; change to M12 if you want annual
     },
     yaxis:{visible:false, range:[-1.2, 0.9]},
     annotations: ann,
@@ -407,7 +426,6 @@ function renderMovement(el, { price, equivNow, captionText = "" }){
   const capEl = document.getElementById("pc-move-caption");
   if(capEl) capEl.textContent = captionText;
 }
-
 // CSV fields (coming cleanly from data.js)
 function getLocationCode(r){ return String(r.LocationCode ?? "").trim(); }
 function getLotNo(r){ return String(r.LotNo ?? "").trim() || "—"; }
