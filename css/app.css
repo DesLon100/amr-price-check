@@ -500,3 +500,8 @@ body{
 .pc-bands-chart{
   overflow: visible; /* allows bubbles to show outside plot area */
 }
+/* Let Plotly annotations breathe */
+.pc-bands-chart .main-svg{ overflow: visible !important; }
+
+/* Rounded “speech bubble” corners (Plotly annotations are SVG rects) */
+.pc-bands-chart .annotation rect{ rx:10; ry:10; }
