@@ -265,6 +265,5 @@ pcBack?.addEventListener("click", () => {
   currentGraphDiv = null;
   collapseMovePanel();
   resetHero();
-    document.getElementById("pc-structure-hero")?.classList.add("hidden");
   showForm();
 });
