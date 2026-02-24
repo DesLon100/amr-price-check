@@ -349,7 +349,8 @@ function renderMovement(el, {
   targetMonth,
   price,
   equivNow,
-  captionText = ""
+  captionText = "",
+  targetLabel = "Revaluation" // NEW: label for the right-hand bubble
 }){
   if(!el) return;
 
@@ -389,7 +390,7 @@ function renderMovement(el, {
     {
       x: x1, y: 0,
       xref:"x", yref:"y",
-      text: `Revaluation<br><b>${fmtGBP(equivNow)}</b>`,
+      text: `${targetLabel}<br><b>${fmtGBP(equivNow)}</b>`,
       showarrow:false,
       xanchor:"center",
       yanchor:"bottom",
@@ -422,7 +423,7 @@ function renderMovement(el, {
       showlegend:false
     },
 
-    // Revaluation dot (date positioned)
+    // Right-hand dot (date positioned)
     {
       x:[x1], y:[0],
       mode:"markers",
@@ -441,7 +442,7 @@ function renderMovement(el, {
       ticks:"outside",
       ticklen:4,
       tickformat:"%Y",
-      dtick:"M24" // every 2 years; change to M12 if you want annual
+      dtick:"M24"
     },
     yaxis:{visible:false, range:[-1.2, 0.9]},
     annotations: ann,
@@ -472,7 +473,11 @@ export function runPriceCheck({
 
   if(all.length < 10) throw new Error("Not enough auction history.");
 
-  const artworkDate = parseYYYYMM(myMonthYYYYMM) || all[all.length-1].date;
+  // NEW: distinguish between "user supplied date" and "fallback date"
+  const userMonthDate = parseYYYYMM(myMonthYYYYMM);
+  const hasUserMonth = !!userMonthDate;
+
+  const artworkDate = userMonthDate || all[all.length-1].date;
   const purchaseMonth = monthStartUTC(artworkDate);
   const latestDate  = all[all.length-1].date;
 
@@ -715,26 +720,25 @@ export function runPriceCheck({
     meta:"pc_myartwork"
   } : null;
 
-  // Revaluation dot on scatter (hidden until FMV opened; updated if target month used)
+  // Revaluation/Context dot on scatter (hidden until FMV opened; updated if target month used)
+  const rightDotLabel = hasUserMonth ? "Revaluation" : "Context";
   const revalTrace = {
     x:[monthStartUTC(latestDate)],
     y:[NaN],
     type:"scattergl",
     mode:"markers",
     marker:{size:12, color:"#2c3a5c"},
-    hovertemplate:"Revaluation<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
+    hovertemplate:`${rightDotLabel}<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>`,
     showlegend:false,
     visible:false,
     meta:"pc_reval"
   };
 
   const traces = [baseTrace];
-  // keep both sets in the figure, but they remain hidden until FMV panel is opened
   if(p50Trace) traces.push(p50Trace);
   if(regP50Trace) traces.push(regP50Trace);
   if(meanTrace) traces.push(meanTrace);
   if(regMeanTrace) traces.push(regMeanTrace);
-
   if(myArtworkTrace) traces.push(myArtworkTrace);
   traces.push(revalTrace);
 
@@ -787,13 +791,15 @@ export function runPriceCheck({
 
   const equivLatest = impliedValueAtWith(activeReg, monthStartUTC(latestDate));
 
-  // Copy for the FMV panel (reflect chosen engine)
+  // Copy for the FMV panel (reflect chosen engine, and whether date was provided)
+  const engineNoun = (engine === "mean") ? "arithmetic mean" : "rolling median (p50)";
+
   const FMV_COPY =
     "Fair market value is best estimated from the market’s central tendency, not its extremes.\n" +
     "This module calculates a 24-month rolling benchmark of auction prices and fits a trend line.\n" +
-    (engine === "mean"
-      ? "Because your price point sits closer to the mean trend, we use the arithmetic mean to revalue your purchase price."
-      : "Because your price point sits closer to the median trend, we use the rolling median (p50) to revalue your purchase price.");
+    (hasUserMonth
+      ? `Because your price point sits closer to the ${engineNoun} trend, we use it to revalue your purchase price.`
+      : `Because your price point sits closer to the ${engineNoun} trend, we select it for context against the ‘My Artwork’ price.`);
 
   plotPromise.then(() => {
     const gd = elChart;
@@ -885,13 +891,16 @@ export function runPriceCheck({
     };
 
     const renderLatest = () => {
+      const targetLabel = hasUserMonth ? "Revaluation" : "Context";
+
       if(Number.isFinite(equivLatest)){
         renderMovement(moveEl, {
           purchaseMonth,
           targetMonth: monthStartUTC(latestDate),
           price,
           equivNow: equivLatest,
-          captionText: "For retrospective valuations, add target month to calculate."
+          captionText: "For retrospective valuations, add target month to calculate.",
+          targetLabel
         });
       } else {
         moveEl.innerHTML = "";
@@ -957,12 +966,15 @@ export function runPriceCheck({
           return;
         }
 
+        const targetLabel = hasUserMonth ? "Revaluation" : "Context";
+
         renderMovement(moveEl, {
           purchaseMonth,
           targetMonth: d2,
           price,
           equivNow: equiv,
-          captionText: "For retrospective valuations, add target month to recalculate."
+          captionText: "For retrospective valuations, add target month to recalculate.",
+          targetLabel
         });
 
         setRevalDot(d2, equiv, true);
