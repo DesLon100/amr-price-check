@@ -235,7 +235,6 @@ function quantile(sortedArr, q){
   return sortedArr[base] + rest * (sortedArr[base+1] - sortedArr[base]);
 }
 
-
 // Weighted quantile (used for month-weighted rolling p50)
 function weightedQuantile(values, weights, q){
   const arr = [];
@@ -298,7 +297,7 @@ function monthKeyUTC(d){
 }
 
 // ------------------------------------------------------------
-// Helpers for 24M rolling p50 + regression transport
+// Helpers for 24M rolling benchmarks + regression transport
 // ------------------------------------------------------------
 function monthStartUTC(d){
   if(!(d instanceof Date)) return null;
@@ -453,6 +452,7 @@ function renderMovement(el, {
   const capEl = document.getElementById("pc-move-caption");
   if(capEl) capEl.textContent = captionText;
 }
+
 // CSV fields (coming cleanly from data.js)
 function getLocationCode(r){ return String(r.LocationCode ?? "").trim(); }
 function getLotNo(r){ return String(r.LotNo ?? "").trim() || "—"; }
@@ -509,7 +509,9 @@ export function runPriceCheck({
   };
 
   // ------------------------------------------------------------
-  // Rolling 24M p50 + regression
+  // Rolling 24M benchmarks + regressions
+  // - month-weighted p50 median
+  // - month-weighted arithmetic mean
   // ------------------------------------------------------------
   const months = buildMonthRangeUTC(all[0].date, all[all.length-1].date);
   const allM = all.map(r => ({ ...r, _m: monthStartUTC(r.date) }));
@@ -520,6 +522,11 @@ export function runPriceCheck({
   const p50Dates = [];
   const p50Vals  = [];
   const p50T     = [];
+
+  const meanDates = [];
+  const meanVals  = [];
+  const meanT     = [];
+
   const monthToT = new Map();
 
   for(let i=0;i<months.length;i++){
@@ -532,10 +539,7 @@ export function runPriceCheck({
     const win = allM.slice(startPtr, endPtr);
     if(win.length < MIN_SALES_IN_WINDOW) continue;
 
-    // Month-weighted p50:
-    // - Within each 24M window, each month is given broadly equal influence,
-    //   so dense months don't dominate the median.
-    // - A small floor prevents very thin months (1–2 sales) from over-driving the result.
+    // Month-weighting: each month broadly equal, with floor to stop 1-sale months dominating
     const MIN_SALES_PER_MONTH = 5;
 
     const monthCounts = new Map();
@@ -556,31 +560,100 @@ export function runPriceCheck({
     }
     if(vals.length < MIN_SALES_IN_WINDOW) continue;
 
+    // p50 (month-weighted)
     const med = weightedQuantile(vals, wts, 0.5);
     if(!Number.isFinite(med) || med <= 0) continue;
+
+    // arithmetic mean (using same month weights to prevent dense months dominating)
+    let wSum = 0, vwSum = 0;
+    for(let j=0;j<vals.length;j++){
+      const v = vals[j];
+      const w = wts[j];
+      wSum += w;
+      vwSum += v * w;
+    }
+    const mean = (wSum > 0) ? (vwSum / wSum) : NaN;
+    if(!Number.isFinite(mean) || mean <= 0) continue;
 
     p50Dates.push(endMonth);
     p50Vals.push(med);
     p50T.push(i);
+
+    meanDates.push(endMonth);
+    meanVals.push(mean);
+    meanT.push(i);
+
     monthToT.set(monthKeyUTC(endMonth), i);
   }
 
-  let reg = null;
+  // regressions in log space (keeps multiplicative behaviour)
+  let regP50 = null;
   if(p50T.length >= 2){
-    reg = ols(p50T, p50Vals.map(v => Math.log(v)));
+    regP50 = ols(p50T, p50Vals.map(v => Math.log(v)));
   }
 
-  const regDates = [];
-  const regVals  = [];
-  if(reg){
+  let regMean = null;
+  if(meanT.length >= 2){
+    regMean = ols(meanT, meanVals.map(v => Math.log(v)));
+  }
+
+  const regP50Dates = [];
+  const regP50Vals  = [];
+  if(regP50){
     for(let i=0;i<months.length;i++){
-      const v = Math.exp(reg.a + reg.b * i);
+      const v = Math.exp(regP50.a + regP50.b * i);
       if(Number.isFinite(v) && v > 0){
-        regDates.push(months[i]);
-        regVals.push(v);
+        regP50Dates.push(months[i]);
+        regP50Vals.push(v);
       }
     }
   }
+
+  const regMeanDates = [];
+  const regMeanVals  = [];
+  if(regMean){
+    for(let i=0;i<months.length;i++){
+      const v = Math.exp(regMean.a + regMean.b * i);
+      if(Number.isFinite(v) && v > 0){
+        regMeanDates.push(months[i]);
+        regMeanVals.push(v);
+      }
+    }
+  }
+
+  // ------------------------------------------------------------
+  // Pick FMV engine: use whichever trend is closest to My Artwork at purchase month
+  // (distance in log space => compares multiplicative gap)
+  // ------------------------------------------------------------
+  function trendAtPurchase(regObj){
+    const tInput = monthToT.get(monthKeyUTC(purchaseMonth));
+    if(!regObj || !Number.isFinite(tInput)) return NaN;
+    const v = Math.exp(regObj.a + regObj.b * tInput);
+    return (Number.isFinite(v) && v > 0) ? v : NaN;
+  }
+
+  const p50AtPurchase  = trendAtPurchase(regP50);
+  const meanAtPurchase = trendAtPurchase(regMean);
+
+  let engine = "p50";
+  if(Number.isFinite(price) && price > 0){
+    const hasP50  = Number.isFinite(p50AtPurchase);
+    const hasMean = Number.isFinite(meanAtPurchase);
+
+    if(!hasP50 && hasMean) engine = "mean";
+    else if(hasP50 && !hasMean) engine = "p50";
+    else if(hasP50 && hasMean){
+      const dP50  = Math.abs(Math.log(price) - Math.log(p50AtPurchase));
+      const dMean = Math.abs(Math.log(price) - Math.log(meanAtPurchase));
+      engine = (dMean < dP50) ? "mean" : "p50";
+    }
+  }
+
+  const activeReg = (engine === "mean") ? regMean : regP50;
+
+  // ------------------------------------------------------------
+  // Chart traces (both sets exist, but we only show ONE set at a time)
+  // ------------------------------------------------------------
 
   // IMPORTANT: SVG traces for lines so they draw above WebGL dots
   const p50Trace = (p50Dates.length >= 2) ? {
@@ -595,9 +668,9 @@ export function runPriceCheck({
     meta:"pc_p50_24"
   } : null;
 
-  const regTrace = (regDates.length >= 2) ? {
-    x:regDates,
-    y:regVals,
+  const regP50Trace = (regP50Dates.length >= 2) ? {
+    x:regP50Dates,
+    y:regP50Vals,
     type:"scatter",
     mode:"lines",
     line:{width:4.5, color:"rgba(47,59,99,0.90)"},
@@ -605,6 +678,30 @@ export function runPriceCheck({
     showlegend:false,
     visible:false,
     meta:"pc_p50_reg"
+  } : null;
+
+  const meanTrace = (meanDates.length >= 2) ? {
+    x:meanDates,
+    y:meanVals,
+    type:"scatter",
+    mode:"lines",
+    line:{width:3.5, color:"rgba(47,59,99,0.45)"},
+    hovertemplate:"24M rolling mean (arith)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
+    showlegend:false,
+    visible:false,
+    meta:"pc_mean_24"
+  } : null;
+
+  const regMeanTrace = (regMeanDates.length >= 2) ? {
+    x:regMeanDates,
+    y:regMeanVals,
+    type:"scatter",
+    mode:"lines",
+    line:{width:4.5, color:"rgba(47,59,99,0.90)"},
+    hovertemplate:"Trend line (regression through rolling mean)<br>%{x|%b %Y}<br><b>£%{y:,.0f}</b><extra></extra>",
+    showlegend:false,
+    visible:false,
+    meta:"pc_mean_reg"
   } : null;
 
   const myArtworkTrace = Number.isFinite(price) ? {
@@ -632,8 +729,12 @@ export function runPriceCheck({
   };
 
   const traces = [baseTrace];
+  // keep both sets in the figure, but they remain hidden until FMV panel is opened
   if(p50Trace) traces.push(p50Trace);
-  if(regTrace) traces.push(regTrace);
+  if(regP50Trace) traces.push(regP50Trace);
+  if(meanTrace) traces.push(meanTrace);
+  if(regMeanTrace) traces.push(regMeanTrace);
+
   if(myArtworkTrace) traces.push(myArtworkTrace);
   traces.push(revalTrace);
 
@@ -661,10 +762,10 @@ export function runPriceCheck({
   const pct = percentileRank(thenPricesAll, price);
 
   // ------------------------------------------------------------
-  // FMV translation: implied value at any target month
+  // FMV translation: implied value at any target month (ACTIVE engine)
   // ------------------------------------------------------------
-  function impliedValueAt(targetMonthUTC){
-    if(!reg || !Number.isFinite(price) || price <= 0) return null;
+  function impliedValueAtWith(regObj, targetMonthUTC){
+    if(!regObj || !Number.isFinite(price) || price <= 0) return null;
 
     const tInput  = monthToT.get(monthKeyUTC(purchaseMonth));
     const tTarget = monthToT.get(monthKeyUTC(monthStartUTC(targetMonthUTC)));
@@ -676,21 +777,23 @@ export function runPriceCheck({
 
     if(winInput.length < MIN_SALES_IN_WINDOW || winTarget.length < MIN_SALES_IN_WINDOW) return null;
 
-    const pInput  = Math.exp(reg.a + reg.b * tInput);
-    const pTarget = Math.exp(reg.a + reg.b * tTarget);
+    const pInput  = Math.exp(regObj.a + regObj.b * tInput);
+    const pTarget = Math.exp(regObj.a + regObj.b * tTarget);
 
     if(!Number.isFinite(pInput) || !Number.isFinite(pTarget) || pInput <= 0 || pTarget <= 0) return null;
 
     return price * (pTarget / pInput);
   }
 
-  const equivLatest = impliedValueAt(monthStartUTC(latestDate));
+  const equivLatest = impliedValueAtWith(activeReg, monthStartUTC(latestDate));
 
-  // Your headline copy for the section
+  // Copy for the FMV panel (reflect chosen engine)
   const FMV_COPY =
     "Fair market value is best estimated from the market’s central tendency, not its extremes.\n" +
-    "This module calculates a 24-month rolling median (p50) of auction prices and fits a trend line.\n" +
-    "We then revalue your purchase price by the movement of that trend from your purchase date.";
+    "This module calculates a 24-month rolling benchmark of auction prices and fits a trend line.\n" +
+    (engine === "mean"
+      ? "Because your price point sits closer to the mean trend, we use the arithmetic mean to revalue your purchase price."
+      : "Because your price point sits closer to the median trend, we use the rolling median (p50) to revalue your purchase price.");
 
   plotPromise.then(() => {
     const gd = elChart;
@@ -699,10 +802,12 @@ export function runPriceCheck({
     const LIGHT_DOT = "#9bb7e0";
 
     const data = (gd && gd.data) ? gd.data : [];
-    const idxBase = data.findIndex(t => t && t.meta === "pc_base");
-    const idxP50  = data.findIndex(t => t && t.meta === "pc_p50_24");
-    const idxReg  = data.findIndex(t => t && t.meta === "pc_p50_reg");
-    const idxRev  = data.findIndex(t => t && t.meta === "pc_reval");
+    const idxBase   = data.findIndex(t => t && t.meta === "pc_base");
+    const idxP50    = data.findIndex(t => t && t.meta === "pc_p50_24");
+    const idxP50Reg = data.findIndex(t => t && t.meta === "pc_p50_reg");
+    const idxMean   = data.findIndex(t => t && t.meta === "pc_mean_24");
+    const idxMeanReg= data.findIndex(t => t && t.meta === "pc_mean_reg");
+    const idxRev    = data.findIndex(t => t && t.meta === "pc_reval");
 
     let btn = document.getElementById("pc-move-toggle");
     const panel  = document.getElementById("pc-move");
@@ -743,10 +848,31 @@ export function runPriceCheck({
       Plotly.restyle(gd, { x, y, visible: !!visible }, [idxRev]);
     };
 
+    const hideAllLines = () => {
+      if(idxP50    >= 0) Plotly.restyle(gd, { visible:false }, [idxP50]);
+      if(idxP50Reg >= 0) Plotly.restyle(gd, { visible:false }, [idxP50Reg]);
+      if(idxMean   >= 0) Plotly.restyle(gd, { visible:false }, [idxMean]);
+      if(idxMeanReg>= 0) Plotly.restyle(gd, { visible:false }, [idxMeanReg]);
+    };
+
+    const showActiveLines = () => {
+      const useMean = (engine === "mean");
+      if(useMean){
+        if(idxMean    >= 0) Plotly.restyle(gd, { visible:true }, [idxMean]);
+        if(idxMeanReg >= 0) Plotly.restyle(gd, { visible:true }, [idxMeanReg]);
+        if(idxP50     >= 0) Plotly.restyle(gd, { visible:false }, [idxP50]);
+        if(idxP50Reg  >= 0) Plotly.restyle(gd, { visible:false }, [idxP50Reg]);
+      } else {
+        if(idxP50     >= 0) Plotly.restyle(gd, { visible:true }, [idxP50]);
+        if(idxP50Reg  >= 0) Plotly.restyle(gd, { visible:true }, [idxP50Reg]);
+        if(idxMean    >= 0) Plotly.restyle(gd, { visible:false }, [idxMean]);
+        if(idxMeanReg >= 0) Plotly.restyle(gd, { visible:false }, [idxMeanReg]);
+      }
+    };
+
     const applyBaseline = () => {
       if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": DARK_DOT }, [idxBase]);
-      if(idxP50  >= 0) Plotly.restyle(gd, { visible:false }, [idxP50]);
-      if(idxReg  >= 0) Plotly.restyle(gd, { visible:false }, [idxReg]);
+      hideAllLines();
       setRevalDot(latestDate, NaN, false);
 
       panel.classList.add("hidden");
@@ -761,12 +887,12 @@ export function runPriceCheck({
     const renderLatest = () => {
       if(Number.isFinite(equivLatest)){
         renderMovement(moveEl, {
-  purchaseMonth,
-  targetMonth: monthStartUTC(latestDate),
-  price,
-  equivNow: equivLatest,
-  captionText: "For retrospective valuations, add target month to calculate."
-});
+          purchaseMonth,
+          targetMonth: monthStartUTC(latestDate),
+          price,
+          equivNow: equivLatest,
+          captionText: "For retrospective valuations, add target month to calculate."
+        });
       } else {
         moveEl.innerHTML = "";
       }
@@ -775,8 +901,7 @@ export function runPriceCheck({
 
     const applyMovementOn = () => {
       if(idxBase >= 0) Plotly.restyle(gd, { "marker.color": LIGHT_DOT }, [idxBase]);
-      if(idxP50  >= 0) Plotly.restyle(gd, { visible:true }, [idxP50]);
-      if(idxReg  >= 0) Plotly.restyle(gd, { visible:true }, [idxReg]);
+      showActiveLines();
 
       panel.classList.remove("hidden");
       btn.setAttribute("aria-expanded", "true");
@@ -824,7 +949,7 @@ export function runPriceCheck({
         const maxD = months[months.length - 1];
         const d2 = (d < minD) ? minD : (d > maxD ? maxD : d);
 
-        const equiv = impliedValueAt(d2);
+        const equiv = impliedValueAtWith(activeReg, d2);
         if(!Number.isFinite(equiv)){
           if(hint) hint.textContent = "Not enough auction activity around one of the selected dates.";
           setRevalDot(d2, NaN, true);
@@ -833,12 +958,12 @@ export function runPriceCheck({
         }
 
         renderMovement(moveEl, {
-  purchaseMonth,
-  targetMonth: d2,
-  price,
-  equivNow: equiv,
-  captionText: "For retrospective valuations, add target month to recalculate."
-});
+          purchaseMonth,
+          targetMonth: d2,
+          price,
+          equivNow: equiv,
+          captionText: "For retrospective valuations, add target month to recalculate."
+        });
 
         setRevalDot(d2, equiv, true);
 
@@ -850,5 +975,5 @@ export function runPriceCheck({
     applyBaseline();
   });
 
-  return { pct, equivNow: equivLatest, plotPromise };
+  return { pct, equivNow: equivLatest, plotPromise, engine };
 }
