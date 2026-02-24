@@ -1,7 +1,6 @@
 // js/app.js
 import { runPriceCheck } from "./pricecheck.js?v=1";
 import { loadPriceCheckCSV } from "./data.js?v=1";
-import { renderMarketStructure } from "./marketstructure.js?v=1"; // NEW
 
 const el = (id) => document.getElementById(id);
 const escapeHtml = (s) =>
@@ -225,22 +224,7 @@ function doRun({ scroll = true } = {}) {
     elChart: pcUniverse,
   });
 
-    // NEW: reveal Market Structure hero after a successful run
-  const structureHero = document.getElementById("pc-structure-hero");
-  structureHero?.classList.remove("hidden");
 
-  // NEW: initialise / render market structure module
-  renderMarketStructure({
-    workbench: wbLite,
-    artistId,
-    myMonthYYYYMM: myMonth,
-    elTop: document.getElementById("pc-structure-top"),
-    elBottom: document.getElementById("pc-structure-bottom"),
-    toggleBtn: document.getElementById("pc-structure-toggle"),
-    panelEl: document.getElementById("pc-structure-panel"),
-    noteEl: document.getElementById("pc-structure-note"),
-  });
-  
   out?.plotPromise?.then((gd) => {
     currentGraphDiv = gd;
     gd.__pcClickBound = false;     // allow rebind after replot
