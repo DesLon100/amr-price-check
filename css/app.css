@@ -639,3 +639,18 @@ body{
   box-shadow:0 0 0 3px rgba(44,58,92,.10);
 }
 
+.pc-toggle-section{
+  margin-top:18px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+}
+
+.pc-context-text{
+  font-size:14px;
+  line-height:1.4;
+  max-width:600px;
+  text-align:center;
+  white-space:pre-line;
+}
